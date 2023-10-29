@@ -79,14 +79,17 @@ The special tasks are internally defined pseudo-tasks as follows:
     > wfnet:run_wf().
     > wfnet:stop().
 
+The above can also be run with sample2.dat to see the function
+execution. See the Examples directory for some explanation.
+
 ## Project status
 
 The development was carried out on a Linux system (archlinux) with Erlang/OTP 26.1.1.
 
 There is much to be done yet:
 
-* Unit testsv :-()
-* the `and-join` and `xor-split` are just dummy place holders.
+* Unit tests :-()
+* The `and-join` and `xor-split` are just dummy place holders.
 * We need more realistic examples.
 
 The development will be continued after the Spawnfest weekend, and some rest ;-)
