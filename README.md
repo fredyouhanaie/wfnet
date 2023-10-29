@@ -21,5 +21,24 @@ permits.
 ## Build
 
     $ rebar3 compile
+    $ rebar3 dialyzer
+
+## Running with the sample workflows
+
+    $ rebar3 shell
+    > wfnet:start().
+    > wfnet:load("Examples/sample1.dat").
+    > wfnet:run_wf().
+    > wfnet:stop().
+
+## Project status
+
+The development was carried out on a Linux system (archlinux) with Erlang/OTP 26.1.1.
+
+There is much to be done yet:
+
+* Unit testsv :-()
+* the `and-join` and `xor-split` are just dummy place holders.
+* We need more realistic examples.
 
 ---
