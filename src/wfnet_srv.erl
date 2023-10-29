@@ -3,6 +3,11 @@
 %%% @copyright 2023, Fred Youhanaie
 %%% @doc
 %%%
+%%% This is tha main workflow engine/controller.
+%%%
+%%% Currently it can only handle one workflow at a time, within a
+%%% single node.
+%%%
 %%% @end
 %%% Created : 28 Oct 2023 by Fred Youhanaie <fyrlang@anydata.co.uk>
 %%%-------------------------------------------------------------------
@@ -11,7 +16,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, load_wf/1]).
+-export([start_link/0, load_wf/1, run_wf/0, task_done/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -19,7 +24,20 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {tabid}).
+-include_lib("kernel/include/logger.hrl").
+
+%%--------------------------------------------------------------------
+%%
+%% wf_state is one of `no_wf', `loaded', `running', `completed'
+%% task_state, map of Id to state, `running' or `done', if
+%% missing, not started.
+%%
+-record(state, {tabid=undefined,      %% worflow ETS table
+                wf_state=no_wf,       %% workflow state
+                queue=[],             %% queue of ready task Ids
+                task_state=#{},       %% map of task states
+                task_result=#{}       %% results from completed tasks
+               }).
 
 %%%===================================================================
 %%% API
@@ -30,9 +48,27 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
-
+-spec load_wf(file:name_all()) -> ok | {error, term()}.
 load_wf(Filename) ->
     gen_server:call(?SERVER, {load_wf, Filename}).
+
+%%--------------------------------------------------------------------
+%% @doc start the current workflow
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec run_wf() -> ok | {error, term()}.
+run_wf() ->
+    gen_server:call(?SERVER, run_wf).
+
+%%--------------------------------------------------------------------
+%% @doc handle task done
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec task_done(integer(), term()) -> ok | {error, term()}.
+task_done(Id, Result) ->
+    gen_server:call(?SERVER, {task_done, Id, Result}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -82,6 +118,14 @@ init([]) ->
           {stop, Reason :: term(), NewState :: term()}.
 handle_call({load_wf, Filename}, _From, State) ->
     {Reply, State2} = handle_load_wf(Filename, State),
+    {reply, Reply, State2};
+
+handle_call(run_wf, _From, State) ->
+    {Reply, State2} = handle_run_wf(State),
+    {reply, Reply, State2};
+
+handle_call({task_done, Id, Result}, _From, State) ->
+    {Reply, State2} = handle_task_done(Id, Result, State),
     {reply, Reply, State2};
 
 handle_call(_Request, _From, State) ->
@@ -160,13 +204,159 @@ format_status(_Opt, Status) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc load a workflow file into an ETS table.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_load_wf(file:name_all(), term()) ->
+          {ok | {error, term()}, term()}.
 handle_load_wf(Filename, State) ->
-    case wfnet_file:read_file(Filename) of
-        {ok, WF} ->
-            Tab_id = wfnet_file:load_ets(WF),
-            {ok, State#state{tabid=Tab_id}};
-        Error ->
-            {Error, State}
+    case State#state.wf_state of
+        no_wf ->
+            case wfnet_file:read_file(Filename) of
+                {ok, WF} ->
+                    Tab_id = wfnet_file:load_ets(WF),
+                    {ok, State#state{tabid=Tab_id,
+                                     wf_state=loaded}};
+                Error ->
+                    {Error, State}
+            end;
+        _ ->
+            {{error, already_loaded}, State}
     end.
+
+%%--------------------------------------------------------------------
+%% @doc run the current workflow.
+%%
+%% We expect `wfenter' to have id 0.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_run_wf(term()) -> {ok | {error, term()}, term()}.
+handle_run_wf(State) ->
+    T = get_task(0, State),
+    State2 = State#state{wf_state=running},
+    run_task(T, State2).
+
+%%--------------------------------------------------------------------
+%% @doc lookup a task
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_task(integer(), term()) -> tuple().
+get_task(Id, State) ->
+    [Task] = ets:lookup(State#state.tabid, Id),
+    Task.
+
+%%--------------------------------------------------------------------
+%% @doc initiate a task.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec run_task(tuple(), term()) -> term().
+run_task({wfenter, Id, _Succ}, State) ->
+    handle_task_done(Id, 0, State);
+
+run_task({wftask, Id, _Succ, Data}, State) ->
+    wfnet_runner:run_task(Id, Data),
+    Task_states = maps:put(Id, done, State#state.task_state),
+    State2 = State#state{task_state=Task_states},
+    {ok, State2};
+
+run_task({wfexit, _Id}, State) ->
+    case State#state.queue of
+        [] ->
+            ok;
+        Queue ->
+            ?LOG_ERROR("wfexit with non-empty queue (~p).", [Queue])
+    end,
+    {ok, State#state{wf_state=completed}};
+
+run_task({wfands, Id, _Succ}, State) ->
+    handle_task_done(Id, 0, State);
+
+run_task({wfandj, Id, _Succ}, State) ->
+    handle_task_done(Id, 0, State);
+
+run_task({wfxorj, Id, _Succ}, State) ->
+    handle_task_done(Id, 0, State);
+
+run_task({wfxors, Id, _Succ}, State) ->
+    handle_task_done(Id, 0, State);
+
+run_task(Task, State) ->
+    ?LOG_ERROR("Unknown task, task=~p, state=~p.", [Task, State]),
+    {ok, State}.
+
+%%--------------------------------------------------------------------
+%% @doc upate task state/result for a completed task
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_task_done(integer(), term(), term()) -> {ok, term()}.
+handle_task_done(Id, Result, State) ->
+    Task_states = maps:put(Id, done, State#state.task_state),
+    Task_result = maps:put(Id, Result, State#state.task_result),
+    State2 = State#state{task_state=Task_states, task_result=Task_result},
+    State3 = process_next(Id, State2),
+    State4 = process_queue(State3),
+    {ok, State4}.
+
+%%--------------------------------------------------------------------
+%% @doc process the next task in the workflow.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec process_next(integer(), term()) -> term().
+process_next(Id, State) ->
+    Task = get_task(Id, State),
+    case Task of
+        {wfenter, Id, Succ} ->
+            Queue = State#state.queue,
+            State#state{queue=Queue++[Succ]};
+        {wftask, Id, Succ, _} ->
+            Queue = State#state.queue,
+            State#state{queue=Queue++[Succ]};
+        {wfands, Id, Succ} ->
+            Queue = State#state.queue,
+            State#state{queue=Queue++Succ};
+        {wfandj, Id, Succ} ->
+            %% check preds
+            %% for now assume all done
+            Queue = State#state.queue,
+            State#state{queue=Queue++[Succ]};
+        {wfxors, Id, Succ} ->
+            %% check result of pred
+            %% for now take the first branch
+            [First|_Rest] = Succ,
+            Queue = State#state.queue,
+            State#state{queue=Queue++[First]};
+        {wfxorj, Id, Succ} ->
+            Queue = State#state.queue,
+            State#state{queue=Queue++[Succ]}
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc process and tasks remaining in the read queue.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec process_queue(term()) -> term().
+process_queue(State) ->
+    Queue = State#state.queue,
+    State2 = process_queue(Queue, State#state{queue=[]}),
+    State2.
+
+%%--------------------------------------------------------------------
+
+-spec process_queue(list(), term()) -> term().
+process_queue([], State) ->
+    State;
+
+process_queue([Id|Rest], State) ->
+    Task = get_task(Id, State),
+    {ok, State2} = run_task(Task, State),
+    process_queue(Rest, State2).
 
 %%--------------------------------------------------------------------
