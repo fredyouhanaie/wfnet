@@ -1,5 +1,9 @@
 # `wfnet` - Embedded work flow engine for Erlang applications
 
+> **Note**: This project is the continuation of the entry for the
+> Spawnfest 2023 competition:
+> [wfnet1](https://github.com/spawnfest/wfnet1/).
+
 `wfnet` provides a configuration based workflow enactment engine
 within an Erlang application.
 
