@@ -1,0 +1,35 @@
+digraph G {
+    graph [layout=dot rankdir=LR]
+
+    // the following was handcrafted, but it should be automated!
+
+    enter_0 [shape=ellipse]
+    aaa_1   [shape=box]
+    ands_2  [shape=box style=filled fillcolor=black label=""]
+    bbb_3   [shape=box]
+    ccc_4   [shape=box]
+    andj_5  [shape=box style=filled fillcolor=black label=""]
+    ddd_6   [shape=box]
+    xors_7  [shape=diamond]
+    eee_8   [shape=box]
+    fff_9   [shape=box]
+    xorj_10 [shape=diamond]
+    ggg_11  [shape=box]
+    exit_12 [shape=ellipse]
+
+    enter_0 -> aaa_1
+    aaa_1   -> ands_2
+    ands_2  -> bbb_3
+    ands_2  -> ccc_4
+    bbb_3   -> andj_5
+    ccc_4   -> andj_5
+    andj_5  -> ddd_6
+    ddd_6   -> xors_7
+    xors_7  -> eee_8
+    xors_7  -> fff_9
+    eee_8   -> xorj_10
+    fff_9   -> xorj_10
+    xorj_10 -> ggg_11
+    ggg_11  -> exit_12
+
+}

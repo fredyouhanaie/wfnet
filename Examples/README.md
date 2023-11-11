@@ -19,3 +19,15 @@ The format is a set of tuples as follows:
 1. The fourth field is only present for wftask, it can be any term. If
    a triple `{Mod, Fun, Args}` or a pair `{Fun, Args}`, it will be run
    as a function. Otherwise, a log message will be generated.
+
+## The sample workflows
+
+Both workflow files, `sample1.dat` and `sample2.dat` have identical
+structures. The only difference is that some of the tasks in `sample2`
+are functions.
+
+The structue is as follows:
+
+![sample1](sample1.png)
+
+---
