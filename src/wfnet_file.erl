@@ -16,6 +16,8 @@
 
 -include_lib("kernel/include/logger.hrl").
 
+-include_lib("include/wfnet.hrl").
+
 %%--------------------------------------------------------------------
 %% @doc read a workflow file and return it as a list of task tuples.
 %%
