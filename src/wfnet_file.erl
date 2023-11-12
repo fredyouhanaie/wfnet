@@ -82,52 +82,81 @@ add_tasks([], G) ->
     G;
 
 add_tasks([{wfenter, Id=0, Succ}|WF], G) ->
-    digraph:add_vertex(G, Id, {wfenter, Succ}),
-    add_succ(G, Id, Succ),
+    add_task(G, Id, {wfenter}, Succ),
     add_tasks(WF, G);
 
 add_tasks([{wfexit, Id}|WF], G) ->
-    digraph:add_vertex(G, Id, {wfexit}),
+    add_task(G, Id, {wfexit}, []),
     add_tasks(WF, G);
 
 add_tasks([{wftask, Id, Succ, Data}|WF], G) ->
-    digraph:add_vertex(G, Id, {wftask, Succ, Data}),
-    add_succ(G, Id, Succ),
+    add_task(G, Id, {wftask, Data}, Succ),
     add_tasks(WF, G);
 
 add_tasks([{wfands, Id, Succ}|WF], G) ->
-    digraph:add_vertex(G, Id, {wfands, Succ}),
-    [ add_succ(G, Id, S) || S <- Succ ],
+    add_task(G, Id, {wfands}, Succ),
     add_tasks(WF, G);
 
 add_tasks([{wfandj, Id, Succ}|WF], G) ->
-    digraph:add_vertex(G, Id, {wfandj, Succ}),
-    add_succ(G, Id, Succ),
+    add_task(G, Id, {wfandj}, Succ),
     add_tasks(WF, G);
 
 add_tasks([{wfxors, Id, Succ}|WF], G) ->
-    digraph:add_vertex(G, Id, {wfxors, Succ}),
-    [ add_succ(G, Id, S) || S <- Succ ],
+    add_task(G, Id, {wfxors}, Succ),
     add_tasks(WF, G);
 
 add_tasks([{wfxorj, Id, Succ}|WF], G) ->
-    digraph:add_vertex(G, Id, {wfxorj, Succ}),
-    add_succ(G, Id, Succ),
+    add_task(G, Id, {wfxorj}, Succ),
     add_tasks(WF, G).
+
+%%--------------------------------------------------------------------
+%% @doc check create a new task vertex.
+%%
+%% return error if a vertex with `Id' already exists.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec add_task(digraph:graph(), task_id(), term(), task_succ()) -> ok | {error, dup_task_id}.
+add_task(G, Id, Label, Succ) ->
+    case digraph:vertex(G, Id) of
+        false -> %% new task
+            digraph:add_vertex(G, Id, Label),
+            add_succ(G, Id, Succ);
+        {Id, {}} -> %% task was added as a successor
+            digraph:add_vertex(G, Id, Label),
+            add_succ(G, Id, Succ);
+        _ ->
+            ?LOG_ERROR("duplicate task id (~p).", [Id]),
+            {error, dup_task_id}
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc Add a successor edge, and the vertex.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_succ(digraph:graph(), integer(), integer()) -> any().
-add_succ(G, Id, Succ) ->
-    case digraph:vertex(G, Succ) of
+-spec add_succ(digraph:graph(), task_id(), task_id()|[]|[task_id()]) -> ok.
+add_succ(_G, _Id, []) ->
+    ok;
+
+add_succ(G, Id, [S|Succ]) ->
+    case digraph:vertex(G, S) of
         false ->
-            digraph:add_vertex(G, Succ, []);
+            digraph:add_vertex(G, S, {});
         _ ->
             ok
     end,
-    digraph:add_edge(G, Id, Succ).
+    digraph:add_edge(G, Id, S),
+    add_succ(G, Id, Succ);
+
+add_succ(G, Id, Succ) ->
+    case digraph:vertex(G, Succ) of
+        false ->
+            digraph:add_vertex(G, Succ, {});
+        _ ->
+            ok
+    end,
+    digraph:add_edge(G, Id, Succ),
+    ok.
 
 %%--------------------------------------------------------------------
