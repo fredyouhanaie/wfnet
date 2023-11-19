@@ -48,13 +48,17 @@ dg_cleanup(G) ->
     
 digraph_test_() ->
     {"Digraph tests",
-     {setup,
-      fun dg_setup/0,
-      fun dg_cleanup/1,
-      fun (G) ->
-              [ {"digraph length", ?_assertEqual(?Sample_1_len, length(digraph:vertices(G)))},
-                {"digraph tasks",  ?_assertEqual(?Sample_1_ids, lists:sort(digraph:vertices(G)))}
-              ]
-      end } }.
+     [ {setup,
+        fun dg_setup/0,
+        fun dg_cleanup/1,
+        fun (G) ->
+                [ {"digraph length", ?_assertEqual(?Sample_1_len, length(digraph:vertices(G)))},
+                  {"digraph tasks",  ?_assertEqual(?Sample_1_ids, lists:sort(digraph:vertices(G)))}
+                ]
+        end },
+       {"empty workflow", ?_assertEqual([], digraph:vertices(wfnet_file:load_digraph([])))},
+       {"wfenter bad Id", ?_assertException(error, function_clause,
+                                            digraph:vertices(wfnet_file:load_digraph([{wfenter,1,1}])))}
+     ] }.
 
 %%--------------------------------------------------------------------
