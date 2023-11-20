@@ -15,13 +15,13 @@
 %%--------------------------------------------------------------------
 
 %% this file should not be created!
--define(No_file, "Examples/no-file.dat").
+-define(No_file, "Examples/no-file.wf").
 
 %% should be an empty file (except for comments
--define(Sample_0_file, "Examples/sample0.dat").
+-define(Sample_0_file, "Examples/sample0.wf").
 
 %% the basic workflow sample
--define(Sample_1_file, "Examples/sample1.dat").
+-define(Sample_1_file, "Examples/sample1.wf").
 -define(Sample_1_ids, [0,1,2,3,4,5,6,7,8,9,10,11,12]).
 -define(Sample_1_len, length(?Sample_1_ids)).
 
