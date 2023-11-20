@@ -12,8 +12,6 @@
 %% 4. after ddd, one of eee or fff will be run, depending on result of ddd
 %% 5. ggg is run after either of eee or fff have finished
 
-{workflow, #{cbmod => wfnet_cblog}}.
-
 {wfenter, 0, 1}.
 {wftask,  1, 2, {io, format, ["this is task aaa.~n"]}}.
 {wfands,  2, [3, 4]}.
