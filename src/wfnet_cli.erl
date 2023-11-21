@@ -15,6 +15,8 @@
 
 -include_lib("kernel/include/logger.hrl").
 
+-include_lib("include/wfnet.hrl").
+
 %%--------------------------------------------------------------------
 
 -define(Log_level, notice).
@@ -110,11 +112,73 @@ do_command(info, [File]) ->
     G = wfnet_file:load_digraph(WF),
     N_tasks = length(digraph:vertices(G)),
     io:format("Workflow: ~p~n", [File]),
-    io:format("   Tasks: ~p~n", [N_tasks]);
+    io:format("   Tasks: ~p~n", [N_tasks]),
+    ok;
+
+do_command(graph, [File]) ->
+    {ok, WF} = wfnet_file:read_file(File),
+    G = wfnet_file:load_digraph(WF),
+    dg_to_dot(G),
+    ok;
 
 do_command(Cmd, Args) ->
     io:format("cmd=~p, args=~p.~n", [Cmd, Args]),
     usage(),
     error.
+
+%%--------------------------------------------------------------------
+
+-spec dg_to_dot(digraph:graph()) -> ok.
+dg_to_dot(G) ->
+    Tasks = lists:sort(digraph:vertices(G)),
+    io:format("digraph G {~n"),
+    io:format("    graph [layout=dot rankdir=LR]~n"),
+    io:format("~n"),
+    print_tasks(G, Tasks),
+    io:format("~n"),
+    print_edges(G, lists:sort(digraph:edges(G))),
+    io:format("}~n"),
+    ok.
+
+%%--------------------------------------------------------------------
+
+-spec print_tasks(digraph:graph(), [task_id()]) -> ok.
+print_tasks(_G, []) ->
+    ok;
+
+print_tasks(G, [Id|Rest]) ->
+    print_node(digraph:vertex(G, Id)),
+    print_tasks(G, Rest).
+
+%%--------------------------------------------------------------------
+
+-define(Node_fmt,
+        #{wfenter => "    ~p [shape=ellipse]~n",
+          wfexit  => "    ~p [shape=ellipse]~n",
+          wfands  => "    ~p [shape=box]~n",
+          wfandj  => "    ~p [shape=box]~n",
+          wfxors  => "    ~p [shape=diamond]~n",
+          wfxorj  => "    ~p [shape=diamond]~n",
+          wftask  => "    ~p [shape=circle]~n"
+         }).
+
+-spec print_node({task_id(), term()}) -> ok.
+print_node({Id, {wftask, _Data}}) ->
+    print_node({Id, {wftask}});
+
+print_node({Id, {Type}}) when is_map_key(Type, ?Node_fmt) ->
+    io:format(map_get(Type, ?Node_fmt), [Id]),
+    ok.
+
+%%--------------------------------------------------------------------
+
+-spec print_edges(digraph:graph(), [digraph:edge()]) -> ok.
+print_edges(_G, []) ->
+    ok;
+
+print_edges(G, [E|Rest]) ->
+    {E, Id1, Id2, _} = digraph:edge(G, E),
+    io:format("    ~p -> ~p~n", [Id1, Id2]),
+    print_edges(G, Rest).
 
 %%--------------------------------------------------------------------
