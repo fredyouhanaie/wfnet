@@ -95,17 +95,4 @@ or
 
     $ _build/default/bin/wfnet_cli graph Examples/sample1.wf | xdot -
 
-
-## Project status
-
-The development was carried out on a Linux system (archlinux) with Erlang/OTP 26.1.1.
-
-There is much to be done yet:
-
-* Unit tests :-()
-* The `and-join` and `xor-split` are just dummy place holders.
-* We need more realistic examples.
-
-The development will be continued after the Spawnfest weekend, and some rest ;-)
-
 ---
