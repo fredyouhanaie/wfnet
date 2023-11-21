@@ -71,6 +71,31 @@ The special tasks are internally defined pseudo-tasks as follows:
 The above can also be run with sample2.dat to see the function
 execution. See the Examples directory for some explanation.
 
+## The Command Line Interface
+
+A CLI command (escript) is available. Use rebar3 to create the
+command:
+
+    $ rebar3 escriptize
+
+It provides a number subcommands, with new ones being added:
+
+    $ _build/default/bin/wfnet_cli -h
+
+Use `info` to get summary of a workflow file:
+
+    $ _build/default/bin/wfnet_cli info Examples/sample1.wf
+
+Use `graph` to generate a `GraphViz dot` file, and view it:
+
+    $ _build/default/bin/wfnet_cli graph Examples/sample1.wf >sample1-graph.dot
+    $ xdot sample1-graph.dot
+
+or
+
+    $ _build/default/bin/wfnet_cli graph Examples/sample1.wf | xdot -
+
+
 ## Project status
 
 The development was carried out on a Linux system (archlinux) with Erlang/OTP 26.1.1.
