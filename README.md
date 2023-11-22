@@ -1,5 +1,7 @@
 # `wfnet` - Embedded work flow engine for Erlang applications
 
+[![Erlang CI](https://github.com/fredyouhanaie/wfnet/actions/workflows/erlang.yml/badge.svg)](https://github.com/fredyouhanaie/wfnet/actions/workflows/erlang.yml)
+
 > **Note**: This project is the continuation of the entry for the
 > Spawnfest 2023 competition:
 > [wfnet1](https://github.com/spawnfest/wfnet1/).
