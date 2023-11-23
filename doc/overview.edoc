@@ -1,0 +1,87 @@
+%% -*- mode:html -*-
+
+@author Fred Youhanaie <fyrlang@anydata.co.uk>
+@copyright 2023 Fred Youhanaie
+@version 0.1.0
+
+@doc
+
+<h3>Introduction</h3>
+
+<p><code>wfnet</code> provides a configuration based workflow
+  enactment engine within an Erlang application.
+</p>
+
+<h3>About workflows</h3>
+
+<p>Here a workflow is an arrangement of tasks (activities) where each
+  task is only activated when, depending on the task type, one or all
+  of its predecessor(s) have terminated.
+</p>
+
+<p>The concept, and implementation, of workflows here follows those
+  described on the [Workflow patterns](http://workflowpatterns.com/)
+  web site, more specifically the [basic control flow
+  patterns](http://workflowpatterns.com/patterns/control/).
+</p>
+
+<p>Effectively, the workflow is a directed graph of tasks of one of
+  the following types:
+</p>
+
+<code>wftask</code>: Within <code>wfnet</code> tasks are Erlang
+functions, either an <code>{Mod, Fun, Args}</code> triple, or a
+function expression.
+
+<ul>
+
+  <li>when enabled, the function is called, and the result obtained on
+    completion.
+  </li>
+
+  <li>when terminated, its successor task is enabled.
+  </li>
+
+  <li>A task can only have one predecessor and one successor.
+  </li>
+
+</ul>
+
+<p>The special tasks are internally defined pseudo-tasks as follows:
+</p>
+
+<ul>
+
+  <li><code>wfenter</code>: this is the first task of the workflow, it
+    has no predecessor. When enabled, it will intialise the workflow
+    data and enable its successor.
+  </li>
+
+  <li><code>wfexit</code>: this is the last task of the workflow, it
+    has no successors. When enabled, it will clean up and return the
+    data from the workflow.
+  </li>
+
+  <li><code>wfands</code>: this is an AND-split, aka parallel-split,
+    it has a single predecessor, and one or more successors. When
+    enabled, it will enable all its successors.
+  </li>
+
+  <li><code>wfandj</code>: This is an AND-join, aka
+    synchronization. It will only be enabled when ALL of its
+    predecessors have terminated. When enabled, it will enable its
+    successor.
+  </li>
+
+  <li><code>wfxors</code>: This is an XOR-split, aka exclusive
+    choice. When enabled, it will enable only one of its
+    successors. The successor is chosen based on the termination
+    result of its predecessor.
+  </li>
+
+  <li><code>wfxorj</code>: This is an XOR-join, aka simple merge. It
+    has one or more predecessors, and one successor. It is enabled as
+    soon as one of its predecessors terminates.
+  </li>
+
+</ul>

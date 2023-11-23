@@ -3,7 +3,7 @@
 %%% @copyright (C) 2023, Fred Youhanaie
 %%% @doc
 %%%
-%%% Command line utility for `wfnet`.
+%%% Command line utility for `wfnet'.
 %%%
 %%% @end
 %%% Created : 20 Nov 2023 by Fred Youhanaie <fyrlang@anydata.co.uk>
