@@ -25,7 +25,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    container: 26-alpine
+    container: erlang:26-alpine
 
     steps:
       - name: Checkout
