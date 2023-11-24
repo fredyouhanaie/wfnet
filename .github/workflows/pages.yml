@@ -20,12 +20,12 @@ concurrency:
   group: "pages"
   cancel-in-progress: true
 
+runs-on: ubuntu-latest
+container: erlang:26-alpine
+
 jobs:
   # Build job
   build:
-    runs-on: ubuntu-latest
-
-    container: erlang:26-alpine
 
     steps:
       - name: Checkout
