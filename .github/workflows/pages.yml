@@ -20,10 +20,10 @@ concurrency:
   group: "pages"
   cancel-in-progress: true
 
-runs-on: ubuntu-latest
-container: erlang:26-alpine
-
 jobs:
+  runs-on: ubuntu-latest
+  container: erlang:26-alpine
+
   # Build job
   build:
 
