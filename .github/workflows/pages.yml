@@ -21,11 +21,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  runs-on: ubuntu-latest
-  container: erlang:26-alpine
-
   # Build job
   build:
+    runs-on: ubuntu-latest
+    container:
+      image: erlang:26-slim
+      volumes:
+        - /gh_pages:/gh_pages
+        - /_site:/_site
 
     steps:
       - name: Checkout
@@ -38,9 +41,6 @@ jobs:
           source: ./gh_pages
           destination: ./_site
 
-      - name: take ownership of the site files
-        run: sudo chown -R runner _site
-
       - name: generate the public edoc
         run: rebar3 edoc
       - name: copy the doc files
@@ -50,6 +50,11 @@ jobs:
         run: rebar3 as dev edoc
       - name: copy the doc files
         run: cp -r ./doc ./_site/edoc_dev
+
+      - name: generate the ex_doc
+        run: rebar3 ex_doc --output exdoc
+      - name: copy the doc files
+        run: cp -r ./exdoc ./_site/exdoc
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
