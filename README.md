@@ -80,13 +80,25 @@ command:
 
     $ rebar3 escriptize
 
-It provides a number subcommands, with new ones being added:
+It provides a number of subcommands, with new ones being added:
 
     $ _build/default/bin/wfnet_cli -h
+    Version "0.1.0".
+    Usage: wfnet_cli [-h] [-v] [-l [<loglevel>]] command ...
 
-Use `info` to get summary of a workflow file:
+      -h, --help      Print help.
+      -v, --version   Print version.
+      -l, --loglevel  Set log level. [default: notice]
+      command         command to execute, e.g. graph, info ...
+
+           graph  Generate GraphViz DOT file
+            info  Print information about workflow FILE
+
+Use `info` to get a summary of a workflow file:
 
     $ _build/default/bin/wfnet_cli info Examples/sample1.wf
+    Workflow: "Examples/sample1.wf"
+       Tasks: 13
 
 Use `graph` to generate a `GraphViz dot` file, and view it:
 
