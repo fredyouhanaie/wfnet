@@ -15,7 +15,7 @@
 
 -include_lib("kernel/include/logger.hrl").
 
--include_lib("include/wfnet.hrl").
+-include_lib("wfnet/include/wfnet.hrl").
 
 %%--------------------------------------------------------------------
 
