@@ -15,6 +15,7 @@ _*
 _build
 ebin
 erl_crash.dump
+exdoc
 log
 logs
 rebar3.crashdump
