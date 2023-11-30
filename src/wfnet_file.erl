@@ -140,12 +140,7 @@ add_succ(_G, _Id, []) ->
     ok;
 
 add_succ(G, Id, [S|Succ]) ->
-    case digraph:vertex(G, S) of
-        false ->
-            digraph:add_vertex(G, S, {});
-        _ ->
-            ok
-    end,
+    add_succ(G, Id, S),
     digraph:add_edge(G, Id, S),
     add_succ(G, Id, Succ);
 
