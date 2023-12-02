@@ -40,8 +40,8 @@ read_test_() ->
 %%
 dg_setup() ->
     {ok, WF} = wfnet_file:read_file(?Sample_1_file),
-    G = wfnet_file:load_digraph(WF),
-    G.
+    {ok, DG} = wfnet_file:load_digraph(WF),
+    DG.
 
 dg_cleanup(G) ->
     digraph:delete(G).
@@ -56,9 +56,13 @@ digraph_test_() ->
                   {"digraph tasks",  ?_assertEqual(?Sample_1_ids, lists:sort(digraph:vertices(G)))}
                 ]
         end },
-       {"empty workflow", ?_assertEqual([], digraph:vertices(wfnet_file:load_digraph([])))},
-       {"wfenter bad Id", ?_assertException(error, function_clause,
-                                            digraph:vertices(wfnet_file:load_digraph([{wfenter,1,1}])))}
+       {"empty workflow",
+        fun() ->
+                {ok, DG} = wfnet_file:load_digraph([]),
+                ?_assertEqual([], digraph:vertices(DG))
+        end},
+       {"duplicate Id", ?_assertEqual({error, dup_task_id},
+                                      wfnet_file:load_digraph([{wftask,1,2,aaa},{wftask,1,3,bbb}]))}
      ] }.
 
 %%--------------------------------------------------------------------
