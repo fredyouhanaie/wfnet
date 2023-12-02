@@ -12,16 +12,16 @@
 %% 4. after ddd, one of eee or fff will be run, depending on result of ddd
 %% 5. ggg is run after either of eee or fff have finished
 
-{wfenter, 0, 1}.
-{wftask,  1, 2, {io, format, ["this is task aaa.~n"]}}.
-{wfands,  2, [3, 4]}.
-{wftask,  3, 5, {fun io:format/2, ["this is task ~p.~n", [bbb]]}}.
-{wftask,  4, 5, ccc}.
-{wfandj,  5, 6}.
-{wftask,  6, 7, ddd}.
-{wfxors,  7, [8, 9]}.
-{wftask,  8, 10, eee}.
-{wftask,  9, 10, fff}.
-{wfxorj, 10, 11}.
-{wftask, 11, 12, ggg}.
-{wfexit, 12}.
+{wfenter, 0, 1,      {}}.
+{wftask,  1, 2,      {io, format, ["this is task aaa.~n"]}}.
+{wfands,  2, [3, 4], {}}.
+{wftask,  3, 5,      {fun io:format/2, ["this is task ~p.~n", [bbb]]}}.
+{wftask,  4, 5,      ccc}.
+{wfandj,  5, 6,      {}}.
+{wftask,  6, 7,      ddd}.
+{wfxors,  7, [8, 9], {}}.
+{wftask,  8, 10,     eee}.
+{wftask,  9, 10,     fff}.
+{wfxorj, 10, 11,     {}}.
+{wftask, 11, 12,     ggg}.
+{wfexit, 12, 12,     {}}.
