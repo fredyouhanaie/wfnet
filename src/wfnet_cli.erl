@@ -109,16 +109,16 @@ process_command([Cmd|Args]) ->
 -spec do_command(atom(), list()) -> ok|error.
 do_command(info, [File]) ->
     {ok, WF} = wfnet_file:read_file(File),
-    G = wfnet_file:load_digraph(WF),
-    N_tasks = length(digraph:vertices(G)),
+    {ok, DG} = wfnet_file:load_digraph(WF),
+    N_tasks = length(digraph:vertices(DG)),
     io:format("Workflow: ~p~n", [File]),
     io:format("   Tasks: ~p~n", [N_tasks]),
     ok;
 
 do_command(graph, [File]) ->
     {ok, WF} = wfnet_file:read_file(File),
-    G = wfnet_file:load_digraph(WF),
-    dg_to_dot(G),
+    {ok, DG} = wfnet_file:load_digraph(WF),
+    dg_to_dot(DG),
     ok;
 
 do_command(Cmd, Args) ->
@@ -163,10 +163,7 @@ print_tasks(G, [Id|Rest]) ->
          }).
 
 -spec print_node({task_id(), term()}) -> ok.
-print_node({Id, {wftask, _Data}}) ->
-    print_node({Id, {wftask}});
-
-print_node({Id, {Type}}) when is_map_key(Type, ?Node_fmt) ->
+print_node({Id, {Type, _Data}}) when is_map_key(Type, ?Node_fmt) ->
     io:format(map_get(Type, ?Node_fmt), [Id]),
     ok.
 
