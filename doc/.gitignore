@@ -1,3 +1,4 @@
 *
 !.gitignore
-!overview.edoc
+!*.edoc
+!*.md
