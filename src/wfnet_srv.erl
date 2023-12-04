@@ -214,9 +214,9 @@ format_status(_Opt, Status) ->
 handle_load_wf(Filename, State) ->
     case State#state.wf_state of
         no_wf ->
-            case wfnet_file:read_file(Filename) of
+            case wfnet_net:read_file(Filename) of
                 {ok, WF} ->
-                    Tab_id = wfnet_file:load_ets(WF),
+                    Tab_id = wfnet_net:load_ets(WF),
                     {ok, State#state{tabid=Tab_id,
                                      wf_state=loaded}};
                 Error ->

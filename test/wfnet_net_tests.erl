@@ -8,7 +8,7 @@
 %%% @end
 %%% Created : 12 Nov 2023 by Fred Youhanaie <fyrlang@anydata.co.uk>
 %%%-------------------------------------------------------------------
--module(wfnet_file_tests).
+-module(wfnet_net_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -30,17 +30,17 @@
 %%
 read_test_() ->
     {"File handling tests",
-     [ {"missing file", ?_assertEqual({error, enoent}, wfnet_file:read_file(?No_file))},
-       {"empty file",   ?_assertMatch({ok, []},        wfnet_file:read_file(?Sample_0_file))},
-       {"sample1",      ?_assertMatch({ok, _},         wfnet_file:read_file(?Sample_1_file))}
+     [ {"missing file", ?_assertEqual({error, enoent}, wfnet_net:read_file(?No_file))},
+       {"empty file",   ?_assertMatch({ok, []},        wfnet_net:read_file(?Sample_0_file))},
+       {"sample1",      ?_assertMatch({ok, _},         wfnet_net:read_file(?Sample_1_file))}
      ] }.
 
 %%--------------------------------------------------------------------
 %% digraph functions
 %%
 dg_setup() ->
-    {ok, WF} = wfnet_file:read_file(?Sample_1_file),
-    {ok, DG} = wfnet_file:load_digraph(WF),
+    {ok, WF} = wfnet_net:read_file(?Sample_1_file),
+    {ok, DG} = wfnet_net:load_digraph(WF),
     DG.
 
 dg_cleanup(G) ->
@@ -58,11 +58,11 @@ digraph_test_() ->
         end },
        {"empty workflow",
         fun() ->
-                {ok, DG} = wfnet_file:load_digraph([]),
+                {ok, DG} = wfnet_net:load_digraph([]),
                 ?_assertEqual([], digraph:vertices(DG))
         end},
        {"duplicate Id", ?_assertEqual({error, dup_task_id},
-                                      wfnet_file:load_digraph([{wftask,1,2,aaa},{wftask,1,3,bbb}]))}
+                                      wfnet_net:load_digraph([{wftask,1,2,aaa},{wftask,1,3,bbb}]))}
      ] }.
 
 %%--------------------------------------------------------------------

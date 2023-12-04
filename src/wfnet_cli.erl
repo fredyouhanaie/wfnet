@@ -108,16 +108,16 @@ process_command([Cmd|Args]) ->
 
 -spec do_command(atom(), list()) -> ok|error.
 do_command(info, [File]) ->
-    {ok, WF} = wfnet_file:read_file(File),
-    {ok, DG} = wfnet_file:load_digraph(WF),
+    {ok, WF} = wfnet_net:read_file(File),
+    {ok, DG} = wfnet_net:load_digraph(WF),
     N_tasks = length(digraph:vertices(DG)),
     io:format("Workflow: ~p~n", [File]),
     io:format("   Tasks: ~p~n", [N_tasks]),
     ok;
 
 do_command(graph, [File]) ->
-    {ok, WF} = wfnet_file:read_file(File),
-    {ok, DG} = wfnet_file:load_digraph(WF),
+    {ok, WF} = wfnet_net:read_file(File),
+    {ok, DG} = wfnet_net:load_digraph(WF),
     dg_to_dot(DG),
     ok;
 

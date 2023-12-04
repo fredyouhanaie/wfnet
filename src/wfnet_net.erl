@@ -3,12 +3,12 @@
 %%% @copyright 2023, Fred Youhanaie
 %%% @doc
 %%%
-%%% A set of functions for processing workflow definitions.
+%%% A set of functions for processing Workflow Net definitions.
 %%%
 %%% @end
 %%% Created : 28 Oct 2023 by Fred Youhanaie <fyrlang@anydata.co.uk>
 %%%-------------------------------------------------------------------
--module(wfnet_file).
+-module(wfnet_net).
 
 -export([read_file/1, load_ets/1, load_digraph/1]).
 
