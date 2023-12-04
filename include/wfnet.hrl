@@ -22,13 +22,10 @@
                      wfxors | wfxorj | wfexit.
 %% the basic task types
 
--type task() :: { wfenter, task_id(), integer() } |
-                { wftask,  task_id(), term(), integer() } |
-                { wfands,  task_id(), [integer()] } |
-                { wfandj,  task_id(), integer() } |
-                { wfxors,  task_id(), [integer()] } |
-                { wfxorj,  task_id(), integer() } |
-                { wfexit,  task_id() }.
+-type task_data() :: term().
+%% task specific data
+
+-type task() :: {task_type(), task_id(), task_succ(), task_data()}.
 %% task specific tuples types
 
 -type task_rec() :: { Id :: task_id(),
