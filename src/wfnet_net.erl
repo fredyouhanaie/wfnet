@@ -10,7 +10,7 @@
 %%%-------------------------------------------------------------------
 -module(wfnet_net).
 
--export([read_file/1, load_ets/1, load_digraph/1]).
+-export([read_file/1, load_ets/1, load_digraph/1, check_wf/1]).
 
 %%--------------------------------------------------------------------
 
@@ -34,17 +34,87 @@ read_file(File) ->
     end.
 
 %%--------------------------------------------------------------------
+%% @doc Check that a WF definition is valid.
+%%
+%% Check that the task tuples in a WF are valid.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec check_wf([task()]) -> ok | {error, term()}.
+check_wf([]) ->
+    ok;
+
+check_wf([Task|WF]) ->
+    try
+        check_task(Task),
+        check_wf(WF)
+    catch throw:Error ->
+            Error
+    end;
+
+check_wf(_WF) ->
+    {error, bad_net}.
+
+%%--------------------------------------------------------------------
+%% run the test, raise exception if test fails
+%%
+-define(Check_task(Test, Error),
+        case Test of
+            true ->  ok;
+            false -> throw({error, {Error, Task}})
+        end
+       ).
+
+%%--------------------------------------------------------------------
+%% @doc Check a single task record.
+%%
+%% We check for:
+%%
+%% - `wfenter' must have id 0 (for now)
+%% - `wfexit' must have the same `Id' and `Succ'
+%% - `wfands' must have a list as `Succ'
+%% - `wfxors' must have a list as `Succ'
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec check_task(task()) -> no_return().
+check_task(Task={Type, Id, Succ, _Data}) ->
+    ?Check_task(lists:member(Type, ?Task_types), bad_task_type),
+    ?Check_task(is_integer(Id), bad_task_id),
+    case Type of
+        wfenter ->
+            ?Check_task(Id==0, bad_task_wfenter);
+        wfexit ->
+            ?Check_task(Id==Succ, bad_task_wfexit);
+        wfands ->
+            ?Check_task(is_list(Succ), bad_task_succ);
+        wfxors ->
+            ?Check_task(is_list(Succ), bad_task_succ);
+        _ ->
+            ok
+    end;
+
+check_task(Task) ->
+    throw({error, {bad_task, Task}}).
+
+%%--------------------------------------------------------------------
 %% @doc Load a workflow definition into an ETS table.
 %%
 %% An ETS table is created and the task tuples are loaded into it.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec load_ets([term()]) -> ets:table().
+-spec load_ets([term()]) -> {ok, ets:table()} | {error, term()}.
 load_ets(WF) ->
+    try
+        check_wf(WF)
+    catch
+        Error ->
+            Error
+    end,
     Tab = ets:new(wfnet, [named_table, {keypos, 2}, ordered_set]),
     insert_tasks(WF, Tab),
-    Tab.
+    {ok, Tab}.
 
 %%--------------------------------------------------------------------
 %% @doc insert a list of tasks into the ETS table.
@@ -64,16 +134,27 @@ insert_tasks([Task|WF], Tab) ->
 %%
 %% A new digraph containing the workflow is returned.
 %%
+%% It is the responsibility of the caller to delete the digraph when
+%% no longer needed.
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec load_digraph(list()) -> {ok, digraph:graph()} | {error, term()}.
 load_digraph(WF) ->
+    try
+        check_wf(WF)
+    catch
+        throw:Error ->
+            Error
+    end,
+
     G = digraph:new(),
     case add_tasks(WF, G) of
         ok ->
             {ok, G};
-        Error ->
-            Error
+        Err ->
+            digraph:delete(G),
+            Err
     end.
 
 %%--------------------------------------------------------------------

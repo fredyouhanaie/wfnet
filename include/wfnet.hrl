@@ -9,6 +9,11 @@
 %%% Created :  7 Nov 2023 by Fred Youhanaie <fyrlang@anydata.co.uk>
 %%%-------------------------------------------------------------------
 
+-define(Task_types, [wfenter, wftask, wfands, wfandj,
+                     wfxors, wfxorj, wfexit]).
+
+%%--------------------------------------------------------------------
+
 -type task_id() :: integer().
 %% task identifier
 
