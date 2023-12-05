@@ -35,9 +35,9 @@
 
 -type task_rec() :: { Id :: task_id(),
                       Type :: task_type(),
+                      Pred :: task_pred(),
+                      Succ :: task_succ(),
                       Data :: term(),
-                      Succ :: [ task_id() ],
-                      Pred :: [ task_id() ],
                       Result :: term() }.
 %% generic task record (for ETS)
 

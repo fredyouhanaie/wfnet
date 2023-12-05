@@ -104,7 +104,7 @@ check_task(Task) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec load_ets([term()]) -> {ok, ets:table()} | {error, term()}.
+-spec load_ets([task()]) -> {ok, ets:table()} | {error, term()}.
 load_ets(WF) ->
     try
         check_wf(WF)
@@ -112,7 +112,7 @@ load_ets(WF) ->
         Error ->
             Error
     end,
-    Tab = ets:new(wfnet, [named_table, {keypos, 2}, ordered_set]),
+    Tab = ets:new(wfnet, [named_table, ordered_set]),
     insert_tasks(WF, Tab),
     {ok, Tab}.
 
@@ -121,12 +121,13 @@ load_ets(WF) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec insert_tasks([term()], ets:table()) -> ets:table().
-insert_tasks([], Tab) ->
-    Tab;
+-spec insert_tasks([task()], ets:table()) -> ok.
+insert_tasks([], _Tab) ->
+    ok;
 
-insert_tasks([Task|WF], Tab) ->
-    ets:insert(Tab, Task),
+insert_tasks([{Type, Id, Succ, Data}|WF], Tab) ->
+    Task_rec = {Id, Type, [], Succ, Data, {}},
+    ets:insert(Tab, Task_rec),
     insert_tasks(WF, Tab).
 
 %%--------------------------------------------------------------------
