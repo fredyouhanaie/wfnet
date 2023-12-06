@@ -56,7 +56,8 @@ check_wf(_WF) ->
     {error, bad_net}.
 
 %%--------------------------------------------------------------------
-%% run the test, raise exception if test fails
+%% run the test, raise exception if test fails, i.e. returns false.
+%% We expect the variable `Task' to be defined when calling the macro.
 %%
 -define(Check_task(Test, Error),
         case Test of
@@ -71,7 +72,7 @@ check_wf(_WF) ->
 %% We check for:
 %%
 %% - `wfenter' must have id 0 (for now)
-%% - `wfexit' must have the same `Id' and `Succ'
+%% - `wfexit' must have identical `Id' and `Succ'
 %% - `wfands' must have a list as `Succ'
 %% - `wfxors' must have a list as `Succ'
 %%
@@ -100,35 +101,52 @@ check_task(Task) ->
 %%--------------------------------------------------------------------
 %% @doc Load a workflow definition into an ETS table.
 %%
-%% An ETS table is created and the task tuples are loaded into it.
+%% The workflow definition, `WF', is converted to digraph, and the ETS
+%% records are generated from the digraph vertices.
+%%
+%% Once the ETS table is populated, the digraph will be deleted.
 %%
 %% @end
 %%--------------------------------------------------------------------
 -spec load_ets([task()]) -> {ok, ets:table()} | {error, term()}.
 load_ets(WF) ->
     try
-        check_wf(WF)
+        check_wf(WF),
+        case load_digraph(WF) of
+            {ok, DG} ->
+                {ok, Tab} = digraph_to_ets(DG),
+                digraph:delete(DG),
+                {ok, Tab};
+            Error ->
+                Error
+        end
     catch
-        Error ->
-            Error
-    end,
-    Tab = ets:new(wfnet, [named_table, ordered_set]),
-    insert_tasks(WF, Tab),
-    {ok, Tab}.
+        throw:Err -> Err
+    end.
 
 %%--------------------------------------------------------------------
-%% @doc insert a list of tasks into the ETS table.
+%% @doc Create an ETS table from the WF digraph.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec insert_tasks([task()], ets:table()) -> ok.
-insert_tasks([], _Tab) ->
-    ok;
+-spec digraph_to_ets(digraph:graph()) -> {ok, ets:table()} | {error, term()}.
+digraph_to_ets(G) ->
+    Tab = ets:new(wfnet, [named_table, ordered_set]),
+    Task_recs = [ vertex_to_task(G, V) || V <- digraph:vertices(G) ],
+    ets:insert(Tab, Task_recs),
+    {ok, Tab}.
 
-insert_tasks([{Type, Id, Succ, Data}|WF], Tab) ->
-    Task_rec = {Id, Type, [], Succ, Data, {}},
-    ets:insert(Tab, Task_rec),
-    insert_tasks(WF, Tab).
+%%--------------------------------------------------------------------
+%% @doc convert a digraph vertex to a task record.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec vertex_to_task(digraph:graph(), task_id()) -> task_rec().
+vertex_to_task(G, Id) ->
+    {Id, {Type, Data}} = digraph:vertex(G, Id),
+    Pred = digraph:in_neighbours(G, Id),
+    Succ = digraph:out_neighbours(G, Id),
+    {Id, Type, Pred, Succ, Data, {}}.
 
 %%--------------------------------------------------------------------
 %% @doc load the workflow into a digraph.
