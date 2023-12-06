@@ -81,3 +81,30 @@ digraph_test_() ->
      ] }.
 
 %%--------------------------------------------------------------------
+%% ETS load functions
+%%
+ets_setup() ->
+    {ok, WF} = wfnet_net:read_file(?Sample_1_file),
+    {ok, Tab}  = wfnet_net:load_ets(WF),
+    Tab.
+
+ets_cleanup(Tab) ->
+    ets:delete(Tab).
+
+ets_test_() ->
+    {"ETS table tests",
+     [ {setup,
+        fun ets_setup/0,
+        fun ets_cleanup/1,
+        fun (Tab) ->
+                [ {"table length", ?_assertEqual(?Sample_1_len, length(ets:tab2list(Tab)))}
+                ]
+        end },
+       {"empty workflow",
+        fun() ->
+                {ok, Tab} = wfnet_net:load_ets([]),
+                ?_assertEqual([], ets:tab2list(Tab))
+        end}
+     ] }.
+
+%%--------------------------------------------------------------------
