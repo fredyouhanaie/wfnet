@@ -26,6 +26,8 @@
 
 -include_lib("kernel/include/logger.hrl").
 
+-include_lib("wfnet/include/wfnet.hrl").
+
 %%--------------------------------------------------------------------
 %%
 %% wf_state is one of `no_wf', `loaded', `running', `completed'
@@ -216,7 +218,7 @@ handle_load_wf(Filename, State) ->
         no_wf ->
             case wfnet_net:read_file(Filename) of
                 {ok, WF} ->
-                    Tab_id = wfnet_net:load_ets(WF),
+                    {ok, Tab_id} = wfnet_net:load_ets(WF),
                     {ok, State#state{tabid=Tab_id,
                                      wf_state=loaded}};
                 Error ->
@@ -235,16 +237,25 @@ handle_load_wf(Filename, State) ->
 %%--------------------------------------------------------------------
 -spec handle_run_wf(term()) -> {ok | {error, term()}, term()}.
 handle_run_wf(State) ->
-    T = get_task(0, State),
-    State2 = State#state{wf_state=running},
-    run_task(T, State2).
+    case State#state.wf_state of
+        loaded ->
+            T = get_task(0, State),
+            State2 = State#state{wf_state=running},
+            run_task(T, State2);
+        no_wf ->
+            {{error, not_loaded}, State};
+        running ->
+            {{error, already_running}, State};
+        completed ->
+            {{error, already_completed}, State}
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc lookup a task
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_task(integer(), term()) -> tuple().
+-spec get_task(task_id(), term()) -> task_rec().
 get_task(Id, State) ->
     [Task] = ets:lookup(State#state.tabid, Id),
     Task.
@@ -254,17 +265,17 @@ get_task(Id, State) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec run_task(tuple(), term()) -> term().
-run_task({wfenter, Id, _Succ}, State) ->
+-spec run_task(task_rec(), term()) -> term().
+run_task({Id, wfenter, [], _Succ, _Data, {}}, State) ->
     handle_task_done(Id, 0, State);
 
-run_task({wftask, Id, _Succ, Data}, State) ->
+run_task({Id, wftask, _Pred, _Succ, Data, {}}, State) ->
     wfnet_runner:run_task(Id, Data),
     Task_states = maps:put(Id, done, State#state.task_state),
     State2 = State#state{task_state=Task_states},
     {ok, State2};
 
-run_task({wfexit, _Id}, State) ->
+run_task({Id, wfexit, _Pred, [], _Data, {}}, State) ->
     case State#state.queue of
         [] ->
             ok;
@@ -273,16 +284,16 @@ run_task({wfexit, _Id}, State) ->
     end,
     {ok, State#state{wf_state=completed}};
 
-run_task({wfands, Id, _Succ}, State) ->
+run_task({Id, wfands, _Pred, _Succ, _Data, {}}, State) ->
     handle_task_done(Id, 0, State);
 
-run_task({wfandj, Id, _Succ}, State) ->
+run_task({Id, wfandj, _Pred, _Succ, _Data, {}}, State) ->
     handle_task_done(Id, 0, State);
 
-run_task({wfxorj, Id, _Succ}, State) ->
+run_task({Id, wfxorj, _Pred, _Succ, _Data, {}}, State) ->
     handle_task_done(Id, 0, State);
 
-run_task({wfxors, Id, _Succ}, State) ->
+run_task({Id, wfxors, _Pred, _Succ, _Data, {}}, State) ->
     handle_task_done(Id, 0, State);
 
 run_task(Task, State) ->
@@ -294,7 +305,7 @@ run_task(Task, State) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_task_done(integer(), term(), term()) -> {ok, term()}.
+-spec handle_task_done(task_id(), term(), term()) -> {ok, term()}.
 handle_task_done(Id, Result, State) ->
     Task_states = maps:put(Id, done, State#state.task_state),
     Task_result = maps:put(Id, Result, State#state.task_result),
@@ -308,33 +319,33 @@ handle_task_done(Id, Result, State) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_next(integer(), term()) -> term().
+-spec process_next(task_id(), term()) -> term().
 process_next(Id, State) ->
     Task = get_task(Id, State),
     case Task of
-        {wfenter, Id, Succ} ->
-            Queue = State#state.queue,
-            State#state{queue=Queue++[Succ]};
-        {wftask, Id, Succ, _} ->
-            Queue = State#state.queue,
-            State#state{queue=Queue++[Succ]};
-        {wfands, Id, Succ} ->
+        {Id, wfenter, _Pred, Succ, _Data, {}} ->
             Queue = State#state.queue,
             State#state{queue=Queue++Succ};
-        {wfandj, Id, Succ} ->
+        {Id, wftask, _Pred, Succ, _Data, {}} ->
+            Queue = State#state.queue,
+            State#state{queue=Queue++Succ};
+        {Id, wfands, _Pred, Succ, _Data, {}} ->
+            Queue = State#state.queue,
+            State#state{queue=Queue++Succ};
+        {Id, wfandj, _Pred, Succ, _Data, {}} ->
             %% check preds
             %% for now assume all done
             Queue = State#state.queue,
-            State#state{queue=Queue++[Succ]};
-        {wfxors, Id, Succ} ->
+            State#state{queue=Queue++Succ};
+        {Id, wfxors, _Pred, Succ, _Data, {}} ->
             %% check result of pred
             %% for now take the first branch
             [First|_Rest] = Succ,
             Queue = State#state.queue,
             State#state{queue=Queue++[First]};
-        {wfxorj, Id, Succ} ->
+        {Id, wfxorj, _Pred, Succ, _Data, {}} ->
             Queue = State#state.queue,
-            State#state{queue=Queue++[Succ]}
+            State#state{queue=Queue++Succ}
     end.
 
 %%--------------------------------------------------------------------
@@ -350,7 +361,7 @@ process_queue(State) ->
 
 %%--------------------------------------------------------------------
 
--spec process_queue(list(), term()) -> term().
+-spec process_queue([]|[task_id()], term()) -> term().
 process_queue([], State) ->
     State;
 
