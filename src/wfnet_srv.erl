@@ -17,6 +17,7 @@
 
 %% API
 -export([start_link/0, load_wf/1, run_wf/0, task_done/2]).
+-export([wf_info/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -71,6 +72,20 @@ run_wf() ->
 -spec task_done(integer(), term()) -> ok | {error, term()}.
 task_done(Id, Result) ->
     gen_server:call(?SERVER, {task_done, Id, Result}).
+
+%%--------------------------------------------------------------------
+%% @doc return the current server status.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec wf_info() -> term().
+wf_info() ->
+    case application:get_application(?SERVER) of
+        undefined ->
+            {error, no_wfnet_app};
+        {ok, wfnet} ->
+            gen_server:call(?SERVER, wf_info)
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -128,6 +143,10 @@ handle_call(run_wf, _From, State) ->
 
 handle_call({task_done, Id, Result}, _From, State) ->
     {Reply, State2} = handle_task_done(Id, Result, State),
+    {reply, Reply, State2};
+
+handle_call(wf_info, _From, State) ->
+    {Reply, State2} = handle_wf_info(State),
     {reply, Reply, State2};
 
 handle_call(Request, From, State) ->
@@ -316,6 +335,21 @@ handle_task_done(Id, Result, State) ->
     State3 = process_next(Id, State2),
     State4 = process_queue(State3),
     {ok, State4}.
+
+%%--------------------------------------------------------------------
+%% @doc handle the wf_info request
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_wf_info(term()) -> {map(), term()}.
+handle_wf_info(State) ->
+    Info = #{ tabid       => State#state.tabid,
+              wf_state    => State#state.wf_state,
+              queue       => State#state.queue,
+              task_state  => State#state.task_state,
+              task_result => State#state.task_result
+            },
+    {Info, State}.
 
 %%--------------------------------------------------------------------
 %% @doc process the next task in the workflow.

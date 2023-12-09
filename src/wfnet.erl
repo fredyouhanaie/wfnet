@@ -12,6 +12,7 @@
 
 -export([start/0, stop/0]).
 -export([load_wf/1, run_wf/0, task_done/2]).
+-export([info/0]).
 
 %%--------------------------------------------------------------------
 %% @doc start the application.
@@ -57,5 +58,14 @@ run_wf() ->
 -spec task_done(integer(), term()) -> ok | {error, term()}.
 task_done(Id, Result) ->
     wfnet_srv:task_done(Id, Result).
+
+%%--------------------------------------------------------------------
+%% @doc get status info from the server
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec info() -> term().
+info() ->
+    wfnet_srv:wf_info().
 
 %%--------------------------------------------------------------------
