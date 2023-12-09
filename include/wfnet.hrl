@@ -9,6 +9,10 @@
 %%% Created :  7 Nov 2023 by Fred Youhanaie <fyrlang@anydata.co.uk>
 %%%-------------------------------------------------------------------
 
+-define(WFEMGR, wfnet_emgr).
+
+%%--------------------------------------------------------------------
+
 -define(Task_types, [wfenter, wftask, wfands, wfandj,
                      wfxors, wfxorj, wfexit]).
 

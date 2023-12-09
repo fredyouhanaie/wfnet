@@ -241,6 +241,7 @@ handle_load_wf(Filename, State) ->
             case wfnet_net:read_file(Filename) of
                 {ok, WF} ->
                     {ok, Tab_id} = wfnet_net:load_ets(WF),
+                    gen_event:notify(?WFEMGR, wf_loaded),
                     {ok, State#state{tabid=Tab_id,
                                      wf_state=loaded}};
                 Error ->
@@ -262,6 +263,7 @@ handle_run_wf(State) ->
     case State#state.wf_state of
         loaded ->
             T = get_task(0, State),
+            gen_event:notify(?WFEMGR, wf_running),
             State2 = State#state{wf_state=running},
             run_task(T, State2);
         no_wf ->
@@ -304,6 +306,7 @@ run_task({Id, wfexit, _Pred, [], _Data, {}}, State) ->
         Queue ->
             ?LOG_ERROR("wfexit with non-empty queue (~p).", [Queue])
     end,
+    gen_event:notify(?WFEMGR, wf_completed),
     {ok, State#state{wf_state=completed}};
 
 run_task({Id, wfands, _Pred, _Succ, _Data, {}}, State) ->

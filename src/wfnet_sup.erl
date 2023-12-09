@@ -60,14 +60,21 @@ init([]) ->
                  intensity => 1,
                  period => 5},
 
-    AChild = #{id => 'wfnet_srv',
-               start => {'wfnet_srv', start_link, []},
-               restart => permanent,
-               shutdown => 5000,
-               type => worker,
-               modules => ['wfnet_srv']},
+    Child_emgr = #{id => 'wfnet_emgr',
+                   start => {'wfnet_emgr', start_link, []},
+                   restart => permanent,
+                   shutdown => 5000,
+                   type => worker,
+                   modules => ['wfnet_emgr']},
 
-    {ok, {SupFlags, [AChild]}}.
+    Child_srv = #{id => 'wfnet_srv',
+                  start => {'wfnet_srv', start_link, []},
+                  restart => permanent,
+                  shutdown => 5000,
+                  type => worker,
+                  modules => ['wfnet_srv']},
+
+    {ok, {SupFlags, [Child_emgr, Child_srv]}}.
 
 %%%===================================================================
 %%% Internal functions
