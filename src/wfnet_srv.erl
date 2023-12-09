@@ -130,7 +130,8 @@ handle_call({task_done, Id, Result}, _From, State) ->
     {Reply, State2} = handle_task_done(Id, Result, State),
     {reply, Reply, State2};
 
-handle_call(_Request, _From, State) ->
+handle_call(Request, From, State) ->
+    ?LOG_WARNING("handle_call: unexpected call request from ~p: ~p.", [From, Request]),
     Reply = ok,
     {reply, Reply, State}.
 
@@ -145,7 +146,8 @@ handle_call(_Request, _From, State) ->
           {noreply, NewState :: term(), Timeout :: timeout()} |
           {noreply, NewState :: term(), hibernate} |
           {stop, Reason :: term(), NewState :: term()}.
-handle_cast(_Request, State) ->
+handle_cast(Request, State) ->
+    ?LOG_WARNING("handle_cast: unexpected cast request: ~p.", [Request]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -159,7 +161,8 @@ handle_cast(_Request, State) ->
           {noreply, NewState :: term(), Timeout :: timeout()} |
           {noreply, NewState :: term(), hibernate} |
           {stop, Reason :: normal | term(), NewState :: term()}.
-handle_info(_Info, State) ->
+handle_info(Info, State) ->
+    ?LOG_WARNING("handle_info: unexpected msg/request: ~p.", [Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -301,7 +304,7 @@ run_task(Task, State) ->
     {ok, State}.
 
 %%--------------------------------------------------------------------
-%% @doc upate task state/result for a completed task
+%% @doc update task state/result for a completed task
 %%
 %% @end
 %%--------------------------------------------------------------------
