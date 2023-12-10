@@ -10,9 +10,11 @@
 %%%-------------------------------------------------------------------
 -module(wfnet).
 
--export([load_wf/1, run_wf/0, task_done/2]).
 -export([start/0, stop/0, restart/0]).
+-export([load_file/1, load_wf/1, run_wf/0, task_done/2]).
 -export([info/0]).
+
+-include_lib("wfnet/include/wfnet.hrl").
 
 %%--------------------------------------------------------------------
 %% @doc start the application.
@@ -53,9 +55,18 @@ restart() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec load_wf(file:name_all()) -> ok | {error, term()}.
-load_wf(Filename) ->
-    wfnet_srv:load_wf(Filename).
+-spec load_file(file:name_all()) -> ok | {error, term()}.
+load_file(Filename) ->
+    wfnet_srv:load_file(Filename).
+
+%%--------------------------------------------------------------------
+%% @doc load a workflow from a list of tasks.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec load_wf([task()]) -> ok | {error, term()}.
+load_wf(WF) ->
+    wfnet_srv:load_wf(WF).
 
 %%--------------------------------------------------------------------
 %% @doc run the currently loaded workflow.

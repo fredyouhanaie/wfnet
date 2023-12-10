@@ -16,7 +16,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, load_wf/1, run_wf/0, task_done/2]).
+-export([start_link/0, load_file/1, load_wf/1, run_wf/0, task_done/2]).
 -export([wf_info/0]).
 
 %% gen_server callbacks
@@ -47,13 +47,22 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
+%% @doc tell the server to load a new workflow from a file
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec load_file(file:name_all()) -> ok | {error, term()}.
+load_file(Filename) ->
+    gen_server:call(?SERVER, {load_file, Filename}).
+
+%%--------------------------------------------------------------------
 %% @doc tell the server to load a new workflow
 %%
 %% @end
 %%--------------------------------------------------------------------
 -spec load_wf(file:name_all()) -> ok | {error, term()}.
-load_wf(Filename) ->
-    gen_server:call(?SERVER, {load_wf, Filename}).
+load_wf(WF) ->
+    gen_server:call(?SERVER, {load_wf, WF}).
 
 %%--------------------------------------------------------------------
 %% @doc start the current workflow
@@ -133,8 +142,12 @@ init([]) ->
           {noreply, NewState :: term(), hibernate} |
           {stop, Reason :: term(), Reply :: term(), NewState :: term()} |
           {stop, Reason :: term(), NewState :: term()}.
-handle_call({load_wf, Filename}, _From, State) ->
-    {Reply, State2} = handle_load_wf(Filename, State),
+handle_call({load_file, Filename}, _From, State) ->
+    {Reply, State2} = handle_load_file(Filename, State),
+    {reply, Reply, State2};
+
+handle_call({load_wf, WF}, _From, State) ->
+    {Reply, State2} = handle_load_wf(WF, State),
     {reply, Reply, State2};
 
 handle_call(run_wf, _From, State) ->
@@ -233,20 +246,34 @@ format_status(_Opt, Status) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_load_wf(file:name_all(), term()) ->
+-spec handle_load_file(file:name_all(), term()) ->
           {ok | {error, term()}, term()}.
-handle_load_wf(Filename, State) ->
+handle_load_file(Filename, State) ->
     case State#state.wf_state of
         no_wf ->
             case wfnet_net:read_file(Filename) of
                 {ok, WF} ->
-                    {ok, Tab_id} = wfnet_net:load_ets(WF),
-                    gen_event:notify(?WFEMGR, wf_loaded),
-                    {ok, State#state{tabid=Tab_id,
-                                     wf_state=loaded}};
+                    handle_load_wf(WF, State);
                 Error ->
                     {Error, State}
             end;
+        _ ->
+            {{error, already_loaded}, State}
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc load a workflow (list of tasks) into an ETS table.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_load_wf([task()], term()) ->
+          {ok | {error, term()}, term()}.
+handle_load_wf(WF, State) ->
+    case State#state.wf_state of
+        no_wf ->
+            {ok, Tab_id} = wfnet_net:load_ets(WF),
+            gen_event:notify(?WFEMGR, wf_loaded),
+            {ok, State#state{tabid=Tab_id, wf_state=loaded}};
         _ ->
             {{error, already_loaded}, State}
     end.
