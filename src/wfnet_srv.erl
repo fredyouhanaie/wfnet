@@ -343,8 +343,7 @@ run_task({Id, wfexit, _Pred, [], _Data, {}}, State) ->
         Queue ->
             ?LOG_ERROR("wfexit with non-empty queue (~p).", [Queue])
     end,
-    gen_event:notify(?WFEMGR, wf_completed),
-    {ok, State#state{wf_state=completed}};
+    handle_task_done(Id, 0, State);
 
 run_task({Id, wfands, _Pred, _Succ, _Data, {}}, State) ->
     handle_task_done(Id, 0, State);
@@ -403,6 +402,9 @@ process_next(Id, State) ->
         {Id, wfenter, _Pred, Succ, _Data, {}} ->
             Queue = State#state.queue,
             State#state{queue=Queue++Succ};
+        {Id, wfexit, _Pred, [], _Data, {}} ->
+            gen_event:notify(?WFEMGR, wf_completed),
+            State#state{wf_state=completed};
         {Id, wftask, _Pred, Succ, _Data, {}} ->
             Queue = State#state.queue,
             State#state{queue=Queue++Succ};
