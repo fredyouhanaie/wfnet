@@ -289,10 +289,16 @@ handle_load_wf(WF, State) ->
 handle_run_wf(State) ->
     case State#state.wf_state of
         loaded ->
-            T = get_task(0, State),
-            gen_event:notify(?WFEMGR, wf_running),
-            State2 = State#state{wf_state=running},
-            run_task(T, State2);
+            case get_task(0, State) of
+                task_not_found ->
+                    gen_event:notify(?WFEMGR, wf_aborted),
+                    State2 = State#state{wf_state=aborted},
+                    {{error, wfenter_not_found}, State2};
+                T ->
+                    gen_event:notify(?WFEMGR, wf_running),
+                    State2 = State#state{wf_state=running},
+                    run_task(T, State2)
+            end;
         no_wf ->
             {{error, not_loaded}, State};
         running ->
@@ -306,10 +312,14 @@ handle_run_wf(State) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_task(task_id(), term()) -> task_rec().
+-spec get_task(task_id(), term()) -> task_rec() | task_not_found.
 get_task(Id, State) ->
-    [Task] = ets:lookup(State#state.tabid, Id),
-    Task.
+    case ets:lookup(State#state.tabid, Id) of
+        [Task] ->
+            Task;
+        [] ->
+            task_not_found
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc initiate a task.
