@@ -10,8 +10,8 @@
 %%%-------------------------------------------------------------------
 -module(wfnet).
 
--export([start/0, stop/0]).
 -export([load_wf/1, run_wf/0, task_done/2]).
+-export([start/0, stop/0, restart/0]).
 -export([info/0]).
 
 %%--------------------------------------------------------------------
@@ -31,6 +31,22 @@ start() ->
 -spec stop() -> ok | {error, term()}.
 stop() ->
     application:stop(wfnet).
+
+%%--------------------------------------------------------------------
+%% @doc restart the application
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec restart() -> ok | {error, term()}.
+restart() ->
+    case stop() of
+        ok ->
+            start();
+        {error, {not_started, wfnet}} ->
+            start();
+        Error ->
+            Error
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc load a workflow from file.
