@@ -428,7 +428,7 @@ process_next(Id, State) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc process and tasks remaining in the read queue.
+%% @doc process the tasks remaining in the ready queue.
 %%
 %% @end
 %%--------------------------------------------------------------------
@@ -439,7 +439,10 @@ process_queue(State) ->
     State2.
 
 %%--------------------------------------------------------------------
-
+%% @doc process the tasks remaining in the ready queue.
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec process_queue([]|[task_id()], term()) -> term().
 process_queue([], State) ->
     State;
