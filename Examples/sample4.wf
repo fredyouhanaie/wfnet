@@ -1,0 +1,7 @@
+%% -*- mode: erlang -*-
+
+%% minimal workflow with no real tasks
+%% wfenter -> wfexit
+
+{wfenter, 0, 1, {}}.
+{wfexit,  1, 1, {}}.

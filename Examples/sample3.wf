@@ -1,0 +1,8 @@
+%% -*- mode: erlang -*-
+
+%% short single task workflow
+%% wfenter -> aaa -> wfexit
+
+{wfenter, 0, 1, {}}.
+{wftask,  1, 2, aaa}.
+{wfexit,  2, 2, {}}.
