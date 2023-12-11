@@ -46,7 +46,6 @@
 -define(SRV_state_1_loaded,
         #{ wf_state => loaded,
            queue => [],
-           tabid => wfnet,
            task_state => #{},
            task_result => #{}
          }).
@@ -56,7 +55,6 @@
 -define(SRV_state_2_3_completed,
         #{ wf_state => completed,
            queue => [],
-           tabid => wfnet,
            task_state => #{0=>done, 1=>done, 2=>done},
            task_result => #{0=>0, 1=>0, 2=>0}
          }).
@@ -66,7 +64,6 @@
 -define(SRV_state_2_4_completed,
         #{ wf_state => completed,
            queue => [],
-           tabid => wfnet,
            task_state => #{0=>done, 1=>done},
            task_result => #{0=>0, 1=>0}
          }).
@@ -115,21 +112,26 @@ srv_1_test_() ->
         {setup, fun srv_setup/0, fun srv_cleanup/1,
          [ { "initial state", ?_assertEqual(?SRV_state_0_init, wfnet:info()) },
            { "load WF", ?_assertEqual(ok, wfnet:load_file(?Sample_4_file)) },
-           { "loaded state", ?_assertEqual(?SRV_state_1_loaded, wfnet:info()) },
+           { "loaded state", ?_assertEqual(?SRV_state_1_loaded, wfnet_info()) },
            { "run WF", ?_assertEqual(ok, wfnet:run_wf()) },
            { "wait", ?_assertEqual(ok, timer:sleep(100)) },
-           { "completed state", ?_assertEqual(?SRV_state_2_4_completed, wfnet:info()) }
+           { "completed state", ?_assertEqual(?SRV_state_2_4_completed, wfnet_info()) }
          ] } },
 
        {"basic workflow (sample3)",
         {setup, fun srv_setup/0, fun srv_cleanup/1,
          [ { "initial state", ?_assertEqual(?SRV_state_0_init, wfnet:info()) },
            { "load WF", ?_assertEqual(ok, wfnet:load_file(?Sample_3_file)) },
-           { "loaded state", ?_assertEqual(?SRV_state_1_loaded, wfnet:info()) },
+           { "loaded state", ?_assertEqual(?SRV_state_1_loaded, wfnet_info()) },
            { "run WF", ?_assertEqual(ok, wfnet:run_wf()) },
            { "wait", ?_assertEqual(ok, timer:sleep(100)) },
-           { "completed state", ?_assertEqual(?SRV_state_2_3_completed, wfnet:info()) }
+           { "completed state", ?_assertEqual(?SRV_state_2_3_completed, wfnet_info()) }
          ] } }
      ] }.
+
+%% return the server status without the ETS tabid
+%%
+wfnet_info() ->
+    maps:without([tabid], wfnet:info()).
 
 %%--------------------------------------------------------------------

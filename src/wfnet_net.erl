@@ -131,7 +131,7 @@ load_ets(WF) ->
 %%--------------------------------------------------------------------
 -spec digraph_to_ets(digraph:graph()) -> {ok, ets:table()} | {error, term()}.
 digraph_to_ets(G) ->
-    Tab = ets:new(wfnet, [named_table, ordered_set]),
+    Tab = ets:new(wfnet, [ordered_set]),
     Task_recs = [ vertex_to_task(G, V) || V <- digraph:vertices(G) ],
     ets:insert(Tab, Task_recs),
     {ok, Tab}.
