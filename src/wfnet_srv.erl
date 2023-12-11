@@ -272,7 +272,7 @@ handle_load_wf(WF, State) ->
     case State#state.wf_state of
         no_wf ->
             {ok, Tab_id} = wfnet_net:load_ets(WF),
-            gen_event:notify(?WFEMGR, wf_loaded),
+            notify_emgr(wf_loaded),
             {ok, State#state{tabid=Tab_id, wf_state=loaded}};
         _ ->
             {{error, already_loaded}, State}
@@ -291,11 +291,11 @@ handle_run_wf(State) ->
         loaded ->
             case get_task(0, State) of
                 task_not_found ->
-                    gen_event:notify(?WFEMGR, wf_aborted),
+                    notify_emgr(wf_aborted),
                     State2 = State#state{wf_state=aborted},
                     {{error, wfenter_not_found}, State2};
                 T ->
-                    gen_event:notify(?WFEMGR, wf_running),
+                    notify_emgr(wf_running),
                     State2 = State#state{wf_state=running},
                     run_task(T, State2)
             end;
@@ -403,7 +403,7 @@ process_next(Id, State) ->
             Queue = State#state.queue,
             State#state{queue=Queue++Succ};
         {Id, wfexit, _Pred, [], _Data, {}} ->
-            gen_event:notify(?WFEMGR, wf_completed),
+            notify_emgr(wf_completed),
             State#state{wf_state=completed};
         {Id, wftask, _Pred, Succ, _Data, {}} ->
             Queue = State#state.queue,
@@ -448,5 +448,14 @@ process_queue([Id|Rest], State) ->
     Task = get_task(Id, State),
     {ok, State2} = run_task(Task, State),
     process_queue(Rest, State2).
+
+%%--------------------------------------------------------------------
+%% @doc send a notification to the event manager.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec notify_emgr(atom()) -> ok.
+notify_emgr(Event) ->
+    gen_event:notify(?WFEMGR, Event).
 
 %%--------------------------------------------------------------------
