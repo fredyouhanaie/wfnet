@@ -31,9 +31,11 @@
 
 %%--------------------------------------------------------------------
 %%
-%% wf_state is one of `no_wf', `loaded', `running', `completed'
-%% task_state, map of Id to state, `running' or `done', if
-%% missing, not started.
+%% `wf_state' is one of `no_wf', `loaded', `running', `completed' and
+%% `aborted'
+%%
+%% `task_state', map of Id to state, `inactive', `waiting', `running'
+%% or `done', if entry for a task is missing, `inactive' is assumed.
 %%
 -record(state, {tabid=undefined,      %% worflow ETS table
                 wf_state=no_wf,       %% workflow state

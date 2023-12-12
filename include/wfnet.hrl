@@ -45,4 +45,10 @@
                       Result :: term() }.
 %% generic task record (for ETS)
 
+-type task_state() :: inactive | done | waiting | running.
+%% task states
+
+-type wf_state() :: no_wf | loaded | aborted | running | completed.
+%% workflow states
+
 %%--------------------------------------------------------------------
