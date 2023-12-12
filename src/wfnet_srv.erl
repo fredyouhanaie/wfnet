@@ -281,33 +281,39 @@ handle_load_wf(WF, State) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc run the current workflow.
+%% @doc run the current workflow, if a workflow has been `loaded'.
 %%
 %% We expect `wfenter' to have id 0.
 %%
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_run_wf(term()) -> {ok | {error, term()}, term()}.
+handle_run_wf(State=#state{wf_state=loaded}) ->
+    case get_task(0, State) of
+        task_not_found ->
+            notify_emgr(wf_aborted),
+            State2 = State#state{wf_state=aborted},
+            {{error, wfenter_not_found}, State2};
+        T ->
+            notify_emgr(wf_running),
+            State2 = State#state{wf_state=running},
+            run_task(T, State2)
+    end;
+
+handle_run_wf(State=#state{wf_state=no_wf}) ->
+    {{error, wf_not_loaded}, State};
+
+handle_run_wf(State=#state{wf_state=running}) ->
+    {{error, wf_already_running}, State};
+
+handle_run_wf(State=#state{wf_state=completed}) ->
+    {{error, wf_already_completed}, State};
+
+handle_run_wf(State=#state{wf_state=aborted}) ->
+    {{error, wf_aborted}, State};
+
 handle_run_wf(State) ->
-    case State#state.wf_state of
-        loaded ->
-            case get_task(0, State) of
-                task_not_found ->
-                    notify_emgr(wf_aborted),
-                    State2 = State#state{wf_state=aborted},
-                    {{error, wfenter_not_found}, State2};
-                T ->
-                    notify_emgr(wf_running),
-                    State2 = State#state{wf_state=running},
-                    run_task(T, State2)
-            end;
-        no_wf ->
-            {{error, not_loaded}, State};
-        running ->
-            {{error, already_running}, State};
-        completed ->
-            {{error, already_completed}, State}
-    end.
+    {{error, {wf_bad_state, State#state.wf_state}}, State}.
 
 %%--------------------------------------------------------------------
 %% @doc lookup a task
