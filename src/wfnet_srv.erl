@@ -334,30 +334,68 @@ get_task(Id, State) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec run_task(task_rec(), term()) -> term().
+-spec run_task(task_rec(), term()) -> {ok, term()} | {{error, term()}, term()}.
 run_task({Id, wfenter, [], _Succ, _Data, {}}, State) ->
-    handle_task_done(Id, 0, State);
+    case task_state(Id, State) of
+        inactive ->
+            handle_task_done(Id, 0, State);
+        S ->
+            {{error, {wfenter_bad_state, S}}, State}
+    end;
 
 run_task({Id, wftask, _Pred, _Succ, Data, {}}, State) ->
-    wfnet_runner:run_task(Id, Data),
-    Task_states = maps:put(Id, done, State#state.task_state),
-    State2 = State#state{task_state=Task_states},
-    {ok, State2};
+    case task_state(Id, State) of
+        inactive ->
+            wfnet_runner:run_task(Id, Data),
+            Task_states = maps:put(Id, running, State#state.task_state),
+            State2 = State#state{task_state=Task_states},
+            {ok, State2};
+        done ->
+            {{error, wftask_already_done}, State};
+        running ->
+            {{error, wftask_already_running}, State};
+        S ->
+            {{error, {wftask_bad_state, S}}, State}
+    end;
 
 run_task({Id, wfexit, _Pred, [], _Data, {}}, State) ->
-    case State#state.queue of
-        [] ->
-            ok;
-        Queue ->
-            ?LOG_ERROR("wfexit with non-empty queue (~p).", [Queue])
-    end,
-    handle_task_done(Id, 0, State);
+    case task_state(Id, State) of
+        inactive ->
+            case State#state.queue of
+                [] ->
+                    handle_task_done(Id, 0, State);
+                Queue ->
+                    ?LOG_ERROR("wfexit with non-empty queue (~p).", [Queue]),
+                    {{error, wfexit_nonempty_queue}, State}
+            end;
+        S ->
+            {{error, {wfexit_bad_state, S}}, State}
+    end;
 
 run_task({Id, wfands, _Pred, _Succ, _Data, {}}, State) ->
-    handle_task_done(Id, 0, State);
+    case task_state(Id, State) of
+        inactive ->
+            handle_task_done(Id, 0, State);
+        S ->
+            {{error, {wfands_bad_state, S}}, State}
+    end;
 
-run_task({Id, wfandj, _Pred, _Succ, _Data, {}}, State) ->
-    handle_task_done(Id, 0, State);
+run_task({Id, wfandj, Pred, _Succ, _Data, {}}, State) ->
+    case task_state(Id, State) of
+        S when S==inactive orelse S==waiting ->
+            %% check the preds
+            All_done = lists:all(fun (X) -> task_is_done(X, State) end, Pred),
+            case All_done of
+                true -> %% we're done
+                    handle_task_done(Id, 0, State);
+                false -> %% wait for all
+                    Task_states = maps:put(Id, waiting, State#state.task_state),
+                    State2 = State#state{task_state=Task_states},
+                    {ok, State2}
+            end;
+        S ->
+            {{error, {wfandj_bad_state, S}}, State}
+    end;
 
 run_task({Id, wfxorj, _Pred, _Succ, _Data, {}}, State) ->
     handle_task_done(Id, 0, State);
@@ -410,26 +448,37 @@ process_next(Id, State) ->
         {Id, wfenter, _Pred, Succ, _Data, {}} ->
             Queue = State#state.queue,
             State#state{queue=Queue++Succ};
+
         {Id, wfexit, _Pred, [], _Data, {}} ->
             notify_emgr(wf_completed),
             State#state{wf_state=completed};
+
         {Id, wftask, _Pred, Succ, _Data, {}} ->
             Queue = State#state.queue,
             State#state{queue=Queue++Succ};
+
         {Id, wfands, _Pred, Succ, _Data, {}} ->
             Queue = State#state.queue,
             State#state{queue=Queue++Succ};
+
         {Id, wfandj, _Pred, Succ, _Data, {}} ->
-            %% check preds
-            %% for now assume all done
             Queue = State#state.queue,
             State#state{queue=Queue++Succ};
-        {Id, wfxors, _Pred, Succ, _Data, {}} ->
-            %% check result of pred
-            %% for now take the first branch
-            [First|_Rest] = Succ,
-            Queue = State#state.queue,
-            State#state{queue=Queue++[First]};
+
+        {Id, wfxors, [Pred], Succ, _Data, {}} ->
+            %% check the result of the predecessor
+            Task_result = maps:get(Pred, State#state.task_result, no_result),
+            case Task_result of
+                no_result ->
+                    {{error, {wfxors_no_result, Pred}}, State};
+                N when N < length(Succ) ->
+                    Next = lists:nth(N+1, Succ),
+                    Queue = State#state.queue,
+                    State#state{queue=Queue++[Next]};
+                N ->
+                    {{error, {wfxors_bad_result, N}}, State}
+            end;
+
         {Id, wfxorj, _Pred, Succ, _Data, {}} ->
             Queue = State#state.queue,
             State#state{queue=Queue++Succ}
@@ -468,5 +517,26 @@ process_queue([Id|Rest], State) ->
 -spec notify_emgr(atom()) -> ok.
 notify_emgr(Event) ->
     gen_event:notify(?WFEMGR, Event).
+
+%%--------------------------------------------------------------------
+%% @doc return the current state of a task `Id'.
+%%
+%% On startup, none of the tasks are assigned a `task_state', if it is
+%% missing from the map we return `inactive'.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec task_state(task_id(), term()) -> task_state().
+task_state(Id, State) ->
+    maps:get(Id, State#state.task_state, inactive).
+
+%%--------------------------------------------------------------------
+%% @doc check if task `Id' is `done'.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec task_is_done(task_id(), term()) -> boolean().
+task_is_done(Id, State) ->
+    task_state(Id, State) == done.
 
 %%--------------------------------------------------------------------
