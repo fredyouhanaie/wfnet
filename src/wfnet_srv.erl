@@ -465,18 +465,27 @@ process_next(Id, State) ->
             Queue = State#state.queue,
             State#state{queue=Queue++Succ};
 
-        {Id, wfxors, [Pred], Succ, _Data, {}} ->
+        {Id, wfxors, [Pred], Succ, Data, {}} ->
             %% check the result of the predecessor
             Task_result = maps:get(Pred, State#state.task_result, no_result),
             case Task_result of
                 no_result ->
                     {{error, {wfxors_no_result, Pred}}, State};
-                N when N < length(Succ) ->
-                    Next = lists:nth(N+1, Succ),
-                    Queue = State#state.queue,
-                    State#state{queue=Queue++[Next]};
-                N ->
-                    {{error, {wfxors_bad_result, N}}, State}
+                K ->
+                    case catch is_map_key(K, Data) of
+                        {badmap, _} ->
+                            {{error, {wfxors_bad_data, Data}}, State};
+                        true ->
+                            Next = map_get(K, Data),
+                            Queue = State#state.queue,
+                            State#state{queue=Queue++[Next]};
+                        false when is_map_key(default, Data) ->
+                            Next = map_get(default, Data),
+                            Queue = State#state.queue,
+                            State#state{queue=Queue++[Next]};
+                        false ->
+                            {{error, {wfxors_bad_result, Task_result}}, State}
+                    end
             end;
 
         {Id, wfxorj, _Pred, Succ, _Data, {}} ->

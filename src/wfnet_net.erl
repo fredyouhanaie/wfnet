@@ -207,6 +207,11 @@ add_tasks([{Type, Id, Succ, Data} | WF], G) ->
 %%--------------------------------------------------------------------
 -spec add_task(digraph:graph(), task_id(), term(), task_succ()) ->
           ok | {error, dup_task_id}.
+add_task(G, Id, {wfxors, Data}, Succ) when Data=={} orelse Data==#{} ->
+    %% set up the branching data, if not explicitly specified
+    Data2 = maps:from_list(lists:enumerate(0,Succ)),
+    add_task(G, Id, {wfxors, Data2}, Succ);
+
 add_task(G, Id, Label, Succ) ->
     case digraph:vertex(G, Id) of
         false -> %% new task
