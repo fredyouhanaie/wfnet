@@ -472,7 +472,7 @@ process_next(Id, State) ->
             Queue = State#state.queue,
             {ok, State#state{queue=Queue++Succ}};
 
-        {Id, wfxors, [Pred], Succ, Data, {}} ->
+        {Id, wfxors, [Pred], _Succ, Data, {}} ->
             %% check the result of the predecessor
             Task_result = maps:get(Pred, State#state.task_result, no_result),
             case Task_result of

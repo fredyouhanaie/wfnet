@@ -205,25 +205,42 @@ add_tasks([{Type, Id, Succ, Data} | WF], G) ->
 %%--------------------------------------------------------------------
 -spec add_task(digraph:graph(), task_id(), term(), task_succ()) ->
           ok | {error, dup_task_id}.
-add_task(G, Id, {wfxors, Data}, Succ) when Data=={} orelse Data==#{} ->
-    %% set up the branching data, if not explicitly specified
-    Data2 = maps:from_list(lists:enumerate(0,Succ)),
-    add_task(G, Id, {wfxors, Data2}, Succ);
-
 add_task(G, Id, Label, Succ) ->
     case digraph:vertex(G, Id) of
         false -> %% new task
-            digraph:add_vertex(G, Id, Label),
-            add_succ(G, Id, Succ),
-            ok;
+            add_vertex_succ(G, Id, Label, Succ);
         {Id, placeholder} -> %% task had been added as a placeholder
-            digraph:add_vertex(G, Id, Label),
-            add_succ(G, Id, Succ),
-            ok;
+            add_vertex_succ(G, Id, Label, Succ);
         _ ->
             ?LOG_ERROR("duplicate task id (~p).", [Id]),
             {error, dup_task_id}
     end.
+
+%%--------------------------------------------------------------------
+%% @doc add a task vertex together with its successor edges
+%%
+%% We need to add a branching map for the `wfxors' tasks. This is to
+%% decide which branch to take based on predecessor's result. The key
+%% `default' can be used to catch any unmapped result values.
+%%
+%% The branching map will be stored in the `Data' item of the task
+%% definition.
+%%
+%% If supplied `Data' is the empty tuple or map, i.e. `{}' or `#{}',
+%% then a map will be generated where they map integers 0 to
+%% `length(Succ)-1' to the list of `Id's in `Succ'.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec add_vertex_succ(digraph:graph(), task_id(), {task_type(), term()}, task_succ()) -> ok.
+add_vertex_succ(G, Id, {wfxors, Data}, Succ) when Data=={} orelse Data==#{} ->
+    %% set up the branching map, if not explicitly specified
+    Data2 = maps:from_list(lists:enumerate(0, lists:flatten([Succ]))),
+    add_vertex_succ(G, Id, {wfxors, Data2}, Succ);
+
+add_vertex_succ(G, Id, Label, Succ) ->
+    digraph:add_vertex(G, Id, Label),
+    add_succ(G, Id, Succ).
 
 %%--------------------------------------------------------------------
 %% @doc Add one or more successor edges, and the vertex.
@@ -231,7 +248,8 @@ add_task(G, Id, Label, Succ) ->
 %% The successor may be a single `task_id' or a list of `task_id's.
 %%
 %% We expect the vertex for `Id' to exist. If the vertex for the
-%% successor id does not exist, we create a placeholder vertex for it.
+%% successor id does not exist, we create a `placeholder' vertex for
+%% it.
 %%
 %% @end
 %%--------------------------------------------------------------------
