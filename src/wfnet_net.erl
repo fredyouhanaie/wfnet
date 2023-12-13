@@ -160,20 +160,18 @@ vertex_to_task(G, Id) ->
 %%--------------------------------------------------------------------
 -spec load_digraph(list()) -> {ok, digraph:graph()} | {error, term()}.
 load_digraph(WF) ->
-    try
-        check_wf(WF)
-    catch
-        throw:Error ->
-            Error
-    end,
-
-    G = digraph:new(),
-    case add_tasks(WF, G) of
+    case check_wf(WF) of
         ok ->
-            {ok, G};
-        Err ->
-            digraph:delete(G),
-            Err
+            G = digraph:new(),
+            case add_tasks(WF, G) of
+                ok ->
+                    {ok, G};
+                Err ->
+                    digraph:delete(G),
+                    Err
+            end;
+        Error ->
+            Error
     end.
 
 %%--------------------------------------------------------------------

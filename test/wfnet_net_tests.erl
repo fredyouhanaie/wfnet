@@ -78,6 +78,7 @@ digraph_test_() ->
                 {ok, DG} = wfnet_net:load_digraph([]),
                 ?_assertEqual([], digraph:vertices(DG))
         end},
+       {"bad workflow", ?_assertEqual({error, bad_net}, wfnet_net:load_digraph({})) },
        {"duplicate Id", ?_assertEqual({error, dup_task_id},
                                       wfnet_net:load_digraph([{wftask,1,2,aaa},{wftask,1,3,bbb}]))}
      ] }.
