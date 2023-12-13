@@ -273,9 +273,13 @@ handle_load_file(Filename, State) ->
 handle_load_wf(WF, State) ->
     case State#state.wf_state of
         no_wf ->
-            {ok, Tab_id} = wfnet_net:load_ets(WF),
-            notify_emgr(wf_loaded),
-            {ok, State#state{tabid=Tab_id, wf_state=loaded}};
+            case wfnet_net:load_ets(WF) of
+                {ok, Tab_id} ->
+                    notify_emgr(wf_loaded),
+                    {ok, State#state{tabid=Tab_id, wf_state=loaded}};
+                Error ->
+                    {Error, State}
+            end;
         _ ->
             {{error, already_loaded}, State}
     end.
