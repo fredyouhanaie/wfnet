@@ -416,14 +416,17 @@ run_task(Task, State) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_task_done(task_id(), term(), term()) -> {ok, term()}.
+-spec handle_task_done(task_id(), term(), term()) -> {ok | {error, term()}, term()}.
 handle_task_done(Id, Result, State) ->
     Task_states = maps:put(Id, done, State#state.task_state),
     Task_result = maps:put(Id, Result, State#state.task_result),
     State2 = State#state{task_state=Task_states, task_result=Task_result},
-    State3 = process_next(Id, State2),
-    State4 = process_queue(State3),
-    {ok, State4}.
+    case process_next(Id, State2) of
+        {ok, State3} ->
+            process_queue(State3);
+        Error ->
+            Error
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc handle the wf_info request
@@ -445,29 +448,29 @@ handle_wf_info(State) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_next(task_id(), term()) -> term().
+-spec process_next(task_id(), term()) -> {ok | {error, term()}, term()}.
 process_next(Id, State) ->
     Task = get_task(Id, State),
     case Task of
         {Id, wfenter, _Pred, Succ, _Data, {}} ->
             Queue = State#state.queue,
-            State#state{queue=Queue++Succ};
+            {ok, State#state{queue=Queue++Succ}};
 
         {Id, wfexit, _Pred, [], _Data, {}} ->
             notify_emgr(wf_completed),
-            State#state{wf_state=completed};
+            {ok, State#state{wf_state=completed}};
 
         {Id, wftask, _Pred, Succ, _Data, {}} ->
             Queue = State#state.queue,
-            State#state{queue=Queue++Succ};
+            {ok, State#state{queue=Queue++Succ}};
 
         {Id, wfands, _Pred, Succ, _Data, {}} ->
             Queue = State#state.queue,
-            State#state{queue=Queue++Succ};
+            {ok, State#state{queue=Queue++Succ}};
 
         {Id, wfandj, _Pred, Succ, _Data, {}} ->
             Queue = State#state.queue,
-            State#state{queue=Queue++Succ};
+            {ok, State#state{queue=Queue++Succ}};
 
         {Id, wfxors, [Pred], Succ, Data, {}} ->
             %% check the result of the predecessor
@@ -482,11 +485,11 @@ process_next(Id, State) ->
                         true ->
                             Next = map_get(K, Data),
                             Queue = State#state.queue,
-                            State#state{queue=Queue++[Next]};
+                            {ok, State#state{queue=Queue++[Next]}};
                         false when is_map_key(default, Data) ->
                             Next = map_get(default, Data),
                             Queue = State#state.queue,
-                            State#state{queue=Queue++[Next]};
+                            {ok, State#state{queue=Queue++[Next]}};
                         false ->
                             {{error, {wfxors_bad_result, Task_result}}, State}
                     end
@@ -494,7 +497,7 @@ process_next(Id, State) ->
 
         {Id, wfxorj, _Pred, Succ, _Data, {}} ->
             Queue = State#state.queue,
-            State#state{queue=Queue++Succ}
+            {ok, State#state{queue=Queue++Succ}}
     end.
 
 %%--------------------------------------------------------------------
@@ -513,14 +516,18 @@ process_queue(State) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_queue([]|[task_id()], term()) -> term().
+-spec process_queue([]|[task_id()], term()) -> {ok | {error, term()}, term()}.
 process_queue([], State) ->
-    State;
+    {ok, State};
 
 process_queue([Id|Rest], State) ->
     Task = get_task(Id, State),
-    {ok, State2} = run_task(Task, State),
-    process_queue(Rest, State2).
+    case run_task(Task, State) of
+        {ok, State2} ->
+            process_queue(Rest, State2);
+        Error ->
+            Error
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc send a notification to the event manager.
