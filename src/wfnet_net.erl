@@ -71,10 +71,12 @@ check_wf(_WF) ->
 %%
 %% We check for:
 %%
-%% - `wfenter' must have id 0 (for now)
-%% - `wfexit' must have identical `Id' and `Succ'
-%% - `wfands' must have a list as `Succ'
-%% - `wfxors' must have a list as `Succ'
+%% <ul>
+%% <li>`wfenter' must have id 0 (for now)</li>
+%% <li>`wfexit' must have identical `Id' and `Succ'</li>
+%% <li>`wfands' must have a list as `Succ'</li>
+%% <li>`wfxors' must have a list as `Succ'</li>
+%% </ul>
 %%
 %% @end
 %%--------------------------------------------------------------------
