@@ -110,18 +110,18 @@ check_task(Task) ->
 %%--------------------------------------------------------------------
 -spec load_ets([task()]) -> {ok, ets:table()} | {error, term()}.
 load_ets(WF) ->
-    try
-        check_wf(WF),
-        case load_digraph(WF) of
-            {ok, DG} ->
-                {ok, Tab} = digraph_to_ets(DG),
-                digraph:delete(DG),
-                {ok, Tab};
-            Error ->
-                Error
-        end
-    catch
-        throw:Err -> Err
+    case check_wf(WF) of
+        ok ->
+            case load_digraph(WF) of
+                {ok, DG} ->
+                    {ok, Tab} = digraph_to_ets(DG),
+                    digraph:delete(DG),
+                    {ok, Tab};
+                Error ->
+                    Error
+            end;
+        Error ->
+            Error
     end.
 
 %%--------------------------------------------------------------------

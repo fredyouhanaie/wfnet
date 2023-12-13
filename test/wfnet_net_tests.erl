@@ -40,7 +40,9 @@ read_test_() ->
 %%
 check_wf_test_() ->
     {"Check WF tests",
-     [ {"wfenter good", ?_assertEqual(ok, wfnet_net:check_wf([{wfenter, 0, 1, {}}]))},
+     [ {"wf net good",  ?_assertEqual(ok, wfnet_net:check_wf([])) },
+       {"wf net bad",   ?_assertEqual({error, bad_net}, wfnet_net:check_wf({})) },
+       {"wfenter good", ?_assertEqual(ok, wfnet_net:check_wf([{wfenter, 0, 1, {}}]))},
        {"wfenter bad",  ?_assertMatch({error, {bad_task_wfenter, _}}, wfnet_net:check_wf([{wfenter, 1, 1, {}}]))},
        {"wfexit good",  ?_assertEqual(ok, wfnet_net:check_wf([{wfexit, 1, 1, {}}]))},
        {"wfexit bad",   ?_assertMatch({error, {bad_task_wfexit, _}}, wfnet_net:check_wf([{wfexit, 1, 2, {}}]))},
