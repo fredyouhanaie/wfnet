@@ -339,7 +339,7 @@ get_task(Id, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec run_task(task_rec(), term()) -> {ok, term()} | {{error, term()}, term()}.
-run_task({Id, wfenter, [], _Succ, _Data, {}}, State) ->
+run_task(#task_rec{id=Id, type=wfenter, pred=[]}, State) ->
     case task_state(Id, State) of
         inactive ->
             handle_task_done(Id, 0, State);
@@ -347,7 +347,7 @@ run_task({Id, wfenter, [], _Succ, _Data, {}}, State) ->
             {{error, {wfenter_bad_state, S}}, State}
     end;
 
-run_task({Id, wftask, _Pred, _Succ, Data, {}}, State) ->
+run_task(#task_rec{id=Id, type=wftask, data=Data}, State) ->
     case task_state(Id, State) of
         inactive ->
             wfnet_runner:run_task(Id, Data),
@@ -362,7 +362,7 @@ run_task({Id, wftask, _Pred, _Succ, Data, {}}, State) ->
             {{error, {wftask_bad_state, S}}, State}
     end;
 
-run_task({Id, wfexit, _Pred, [], _Data, {}}, State) ->
+run_task(#task_rec{id=Id, type=wfexit, succ=[]}, State) ->
     case task_state(Id, State) of
         inactive ->
             case State#state.queue of
@@ -376,7 +376,7 @@ run_task({Id, wfexit, _Pred, [], _Data, {}}, State) ->
             {{error, {wfexit_bad_state, S}}, State}
     end;
 
-run_task({Id, wfands, _Pred, _Succ, _Data, {}}, State) ->
+run_task(#task_rec{id=Id, type=wfands}, State) ->
     case task_state(Id, State) of
         inactive ->
             handle_task_done(Id, 0, State);
@@ -384,7 +384,7 @@ run_task({Id, wfands, _Pred, _Succ, _Data, {}}, State) ->
             {{error, {wfands_bad_state, S}}, State}
     end;
 
-run_task({Id, wfandj, Pred, _Succ, _Data, {}}, State) ->
+run_task(#task_rec{id=Id, type=wfandj, pred=Pred}, State) ->
     case task_state(Id, State) of
         S when S==inactive orelse S==waiting ->
             %% check the preds
@@ -401,10 +401,10 @@ run_task({Id, wfandj, Pred, _Succ, _Data, {}}, State) ->
             {{error, {wfandj_bad_state, S}}, State}
     end;
 
-run_task({Id, wfxorj, _Pred, _Succ, _Data, {}}, State) ->
+run_task(#task_rec{id=Id, type=wfxorj}, State) ->
     handle_task_done(Id, 0, State);
 
-run_task({Id, wfxors, _Pred, _Succ, _Data, {}}, State) ->
+run_task(#task_rec{id=Id, type=wfxors}, State) ->
     handle_task_done(Id, 0, State);
 
 run_task(Task, State) ->
@@ -452,27 +452,27 @@ handle_wf_info(State) ->
 process_next(Id, State) ->
     Task = get_task(Id, State),
     case Task of
-        {Id, wfenter, _Pred, Succ, _Data, {}} ->
+        #task_rec{id=Id, type=wfenter, succ=Succ} ->
             Queue = State#state.queue,
             {ok, State#state{queue=Queue++Succ}};
 
-        {Id, wfexit, _Pred, [], _Data, {}} ->
+        #task_rec{id=Id, type=wfexit, succ=[]} ->
             notify_emgr(wf_completed),
             {ok, State#state{wf_state=completed}};
 
-        {Id, wftask, _Pred, Succ, _Data, {}} ->
+        #task_rec{id=Id, type=wftask, succ=Succ} ->
             Queue = State#state.queue,
             {ok, State#state{queue=Queue++Succ}};
 
-        {Id, wfands, _Pred, Succ, _Data, {}} ->
+        #task_rec{id=Id, type=wfands, succ=Succ} ->
             Queue = State#state.queue,
             {ok, State#state{queue=Queue++Succ}};
 
-        {Id, wfandj, _Pred, Succ, _Data, {}} ->
+        #task_rec{id=Id, type=wfandj, succ=Succ} ->
             Queue = State#state.queue,
             {ok, State#state{queue=Queue++Succ}};
 
-        {Id, wfxors, [Pred], _Succ, Data, {}} ->
+        #task_rec{id=Id, type=wfxors, pred=[Pred], data=Data} ->
             %% check the result of the predecessor
             Task_result = maps:get(Pred, State#state.task_result, no_result),
             case Task_result of
@@ -495,7 +495,7 @@ process_next(Id, State) ->
                     end
             end;
 
-        {Id, wfxorj, _Pred, Succ, _Data, {}} ->
+        #task_rec{id=Id, type=wfxorj, succ=Succ} ->
             Queue = State#state.queue,
             {ok, State#state{queue=Queue++Succ}}
     end.

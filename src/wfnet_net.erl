@@ -133,7 +133,7 @@ load_ets(WF) ->
 %%--------------------------------------------------------------------
 -spec digraph_to_ets(digraph:graph()) -> {ok, ets:table()} | {error, term()}.
 digraph_to_ets(G) ->
-    Tab = ets:new(wfnet, [ordered_set]),
+    Tab = ets:new(wfnet, [ordered_set, {keypos, #task_rec.id}]),
     Task_recs = [ vertex_to_task(G, V) || V <- digraph:vertices(G) ],
     ets:insert(Tab, Task_recs),
     {ok, Tab}.
@@ -148,7 +148,12 @@ vertex_to_task(G, Id) ->
     {Id, {Type, Data}} = digraph:vertex(G, Id),
     Pred = digraph:in_neighbours(G, Id),
     Succ = digraph:out_neighbours(G, Id),
-    {Id, Type, Pred, Succ, Data, {}}.
+    #task_rec{id=Id,
+              type=Type,
+              pred=Pred,
+              succ=Succ,
+              data=Data
+             }.
 
 %%--------------------------------------------------------------------
 %% @doc load the workflow into a digraph.
