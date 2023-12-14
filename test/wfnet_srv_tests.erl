@@ -55,8 +55,8 @@
 -define(SRV_state_2_3_completed,
         #{ wf_state => completed,
            queue => [],
-           task_state => #{0=>done, 1=>done, 2=>done},
-           task_result => #{0=>0, 1=>0, 2=>0}
+           task_state => #{},
+           task_result => #{}
          }).
 
 %% sample4.wf
@@ -64,8 +64,8 @@
 -define(SRV_state_2_4_completed,
         #{ wf_state => completed,
            queue => [],
-           task_state => #{0=>done, 1=>done},
-           task_result => #{0=>0, 1=>0}
+           task_state => #{},
+           task_result => #{}
          }).
 
 %%--------------------------------------------------------------------

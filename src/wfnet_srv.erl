@@ -343,6 +343,8 @@ run_task(#task_rec{id=Id, type=wfenter, pred=[]}, State) ->
     case task_state(Id, State) of
         inactive ->
             handle_task_done(Id, 0, State);
+        Error = {error, _} ->
+            {Error, State};
         S ->
             {{error, {wfenter_bad_state, S}}, State}
     end;
@@ -351,13 +353,14 @@ run_task(#task_rec{id=Id, type=wftask, data=Data}, State) ->
     case task_state(Id, State) of
         inactive ->
             wfnet_runner:run_task(Id, Data),
-            Task_states = maps:put(Id, running, State#state.task_state),
-            State2 = State#state{task_state=Task_states},
-            {ok, State2};
+            Res = wfnet_tasks:put_state(State#state.tabid, Id, running),
+            {Res, State};
         done ->
             {{error, wftask_already_done}, State};
         running ->
             {{error, wftask_already_running}, State};
+        Error = {error, _} ->
+            {Error, State};
         S ->
             {{error, {wftask_bad_state, S}}, State}
     end;
@@ -372,6 +375,8 @@ run_task(#task_rec{id=Id, type=wfexit, succ=[]}, State) ->
                     ?LOG_ERROR("wfexit with non-empty queue (~p).", [Queue]),
                     {{error, wfexit_nonempty_queue}, State}
             end;
+        Error = {error, _} ->
+            {Error, State};
         S ->
             {{error, {wfexit_bad_state, S}}, State}
     end;
@@ -380,6 +385,8 @@ run_task(#task_rec{id=Id, type=wfands}, State) ->
     case task_state(Id, State) of
         inactive ->
             handle_task_done(Id, 0, State);
+        Error = {error, _} ->
+            {Error, State};
         S ->
             {{error, {wfands_bad_state, S}}, State}
     end;
@@ -397,6 +404,8 @@ run_task(#task_rec{id=Id, type=wfandj, pred=Pred}, State) ->
                     State2 = State#state{task_state=Task_states},
                     {ok, State2}
             end;
+        Error = {error, _} ->
+            {Error, State};
         S ->
             {{error, {wfandj_bad_state, S}}, State}
     end;
@@ -418,12 +427,12 @@ run_task(Task, State) ->
 %%--------------------------------------------------------------------
 -spec handle_task_done(task_id(), term(), term()) -> {ok | {error, term()}, term()}.
 handle_task_done(Id, Result, State) ->
-    Task_states = maps:put(Id, done, State#state.task_state),
-    Task_result = maps:put(Id, Result, State#state.task_result),
-    State2 = State#state{task_state=Task_states, task_result=Task_result},
-    case process_next(Id, State2) of
-        {ok, State3} ->
-            process_queue(State3);
+    Tab_id = State#state.tabid,
+    wfnet_tasks:put_state(Tab_id, Id, done),
+    wfnet_tasks:put_result(Tab_id, Id, Result),
+    case process_next(Id, State) of
+        {ok, State2} ->
+            process_queue(State2);
         Error ->
             Error
     end.
@@ -473,12 +482,12 @@ process_next(Id, State) ->
             {ok, State#state{queue=Queue++Succ}};
 
         #task_rec{id=Id, type=wfxors, pred=[Pred], data=Data} ->
-            %% check the result of the predecessor
-            Task_result = maps:get(Pred, State#state.task_result, no_result),
-            case Task_result of
-                no_result ->
-                    {{error, {wfxors_no_result, Pred}}, State};
-                K ->
+            %% check the result of the predecessor, and branch
+            Pred_result = wfnet_tasks:get_result(State#state.tabid, Pred),
+            case Pred_result of
+                Error = {error, _} ->
+                    {Error, State};
+                {ok, K} ->
                     case catch is_map_key(K, Data) of
                         {badmap, _} ->
                             {{error, {wfxors_bad_data, Data}}, State};
@@ -491,7 +500,7 @@ process_next(Id, State) ->
                             Queue = State#state.queue,
                             {ok, State#state{queue=Queue++[Next]}};
                         false ->
-                            {{error, {wfxors_bad_result, Task_result}}, State}
+                            {{error, {wfxors_bad_result, Pred_result}}, State}
                     end
             end;
 
@@ -546,9 +555,14 @@ notify_emgr(Event) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec task_state(task_id(), term()) -> task_state().
+-spec task_state(task_id(), term()) -> task_state() | {error, term()}.
 task_state(Id, State) ->
-    maps:get(Id, State#state.task_state, inactive).
+    case wfnet_tasks:get_state(State#state.tabid, Id) of
+        {ok, Task_state} ->
+            Task_state;
+        Error ->
+            Error
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc check if task `Id' is `done'.
