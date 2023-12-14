@@ -37,17 +37,27 @@
         #{ wf_state => no_wf,
            queue => [],
            tabid => undefined,
-           task_state => #{},
-           task_result => #{}
+           task_state => {error, no_table},
+           task_result => {error, no_table}
          }).
 
 %% What we expect to see after loading any valid WF
+%% sample3.wf
 %%
--define(SRV_state_1_loaded,
+-define(SRV_state_1_3_loaded,
         #{ wf_state => loaded,
            queue => [],
-           task_state => #{},
-           task_result => #{}
+           task_state => {ok, #{0 => inactive, 1 => inactive, 2 => inactive}},
+           task_result => {ok, #{0 => {}, 1 => {}, 2 => {}}}
+         }).
+%%
+%% sample4.wf
+%%
+-define(SRV_state_1_4_loaded,
+        #{ wf_state => loaded,
+           queue => [],
+           task_state => {ok, #{0 => inactive, 1 => inactive}},
+           task_result => {ok, #{0 => {}, 1 => {}}}
          }).
 
 %% sample3.wf
@@ -55,8 +65,8 @@
 -define(SRV_state_2_3_completed,
         #{ wf_state => completed,
            queue => [],
-           task_state => #{},
-           task_result => #{}
+           task_state => {ok, #{0 => done, 1 => done, 2 => done}},
+           task_result => {ok, #{0 => 0, 1 => 0, 2 => 0}}
          }).
 
 %% sample4.wf
@@ -64,8 +74,8 @@
 -define(SRV_state_2_4_completed,
         #{ wf_state => completed,
            queue => [],
-           task_state => #{},
-           task_result => #{}
+           task_state => {ok, #{0 => done, 1 => done}},
+           task_result => {ok, #{0 => 0, 1 => 0}}
          }).
 
 %%--------------------------------------------------------------------
@@ -112,7 +122,7 @@ srv_1_test_() ->
         {setup, fun srv_setup/0, fun srv_cleanup/1,
          [ { "initial state", ?_assertEqual(?SRV_state_0_init, wfnet:info()) },
            { "load WF", ?_assertEqual(ok, wfnet:load_file(?Sample_4_file)) },
-           { "loaded state", ?_assertEqual(?SRV_state_1_loaded, wfnet_info()) },
+           { "loaded state", ?_assertEqual(?SRV_state_1_4_loaded, wfnet_info()) },
            { "run WF", ?_assertEqual(ok, wfnet:run_wf()) },
            { "wait", ?_assertEqual(ok, timer:sleep(100)) },
            { "completed state", ?_assertEqual(?SRV_state_2_4_completed, wfnet_info()) }
@@ -122,7 +132,7 @@ srv_1_test_() ->
         {setup, fun srv_setup/0, fun srv_cleanup/1,
          [ { "initial state", ?_assertEqual(?SRV_state_0_init, wfnet:info()) },
            { "load WF", ?_assertEqual(ok, wfnet:load_file(?Sample_3_file)) },
-           { "loaded state", ?_assertEqual(?SRV_state_1_loaded, wfnet_info()) },
+           { "loaded state", ?_assertEqual(?SRV_state_1_3_loaded, wfnet_info()) },
            { "run WF", ?_assertEqual(ok, wfnet:run_wf()) },
            { "wait", ?_assertEqual(ok, timer:sleep(100)) },
            { "completed state", ?_assertEqual(?SRV_state_2_3_completed, wfnet_info()) }

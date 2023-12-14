@@ -18,8 +18,9 @@
 %%%-------------------------------------------------------------------
 -module(wfnet_tasks).
 
--export([get_state/2, put_state/3]).
--export([get_result/2, put_result/3]).
+-export([get_state/2, put_state/3, all_states/1]).
+-export([get_result/2, put_result/3, all_results/1]).
+
 
 -include_lib("kernel/include/logger.hrl").
 
@@ -72,6 +73,24 @@ put_result(Tab_id, Id, Result) ->
     put_task_elem(Tab_id, Id, {#task_rec.result, Result}).
 
 %%--------------------------------------------------------------------
+%% @doc collect and return the states of all the tasks.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec all_states(ets:table()) -> {ok, map()} | {error, term()}.
+all_states(Tab_id) ->
+    all_elements(Tab_id, #task_rec.state).
+
+%%--------------------------------------------------------------------
+%% @doc collect and return the results of all the tasks.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec all_results(ets:table()) -> {ok, map()} | {error, term()}.
+all_results(Tab_id) ->
+    all_elements(Tab_id, #task_rec.result).
+
+%%--------------------------------------------------------------------
 %% internal functions
 %%--------------------------------------------------------------------
 
@@ -113,6 +132,25 @@ put_task_elem(Tab_id, Id, {Pos, Val}) ->
                 false ->
                     {error, bad_task_record}
             end
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc collect the requested elements of all the tasks.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec all_elements(ets:table(), integer()) -> {ok, map()} | {error, term()}.
+all_elements(Tab_id, Pos) ->
+    case ets:info(Tab_id, name) of
+        undefined ->
+            {error, no_table};
+        _ ->
+            F = fun (Task_rec, Map) ->
+                        Id = element(#task_rec.id, Task_rec),
+                        El = element(Pos, Task_rec),
+                        maps:put(Id, El, Map)
+                end,
+            {ok, ets:foldl(F, #{}, Tab_id)}
     end.
 
 %%--------------------------------------------------------------------

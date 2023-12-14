@@ -447,8 +447,8 @@ handle_wf_info(State) ->
     Info = #{ tabid       => State#state.tabid,
               wf_state    => State#state.wf_state,
               queue       => State#state.queue,
-              task_state  => State#state.task_state,
-              task_result => State#state.task_result
+              task_state  => wfnet_tasks:all_states(State#state.tabid),
+              task_result => wfnet_tasks:all_results(State#state.tabid)
             },
     {Info, State}.
 
