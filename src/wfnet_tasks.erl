@@ -34,7 +34,8 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_state(ets:table(), task_id()) -> {ok, term()} | {error, term()}.
+-spec get_state(ets:table(), task_id()) ->
+          {ok, task_state()} | {error, term()}.
 get_state(Tab_id, Id) ->
     get_task_elem(Tab_id, Id, #task_rec.state).
 
@@ -43,7 +44,7 @@ get_state(Tab_id, Id) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec put_state(ets:table(), task_id(), term()) ->
+-spec put_state(ets:table(), task_id(), task_state()) ->
           ok | {error, term()}.
 put_state(Tab_id, Id, Task_state) ->
     put_task_elem(Tab_id, Id, {#task_rec.state, Task_state}).
