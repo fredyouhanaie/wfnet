@@ -34,14 +34,9 @@
 %% `wf_state' is one of `no_wf', `loaded', `running', `completed' and
 %% `aborted'
 %%
-%% `task_state', map of Id to state, `inactive', `waiting', `running'
-%% or `done', if entry for a task is missing, `inactive' is assumed.
-%%
--record(state, {tabid=undefined,      %% worflow ETS table
-                wf_state=no_wf,       %% workflow state
-                queue=[],             %% queue of ready task Ids
-                task_state=#{},       %% map of task states
-                task_result=#{}       %% results from completed tasks
+-record(state, {tabid=undefined, %% worflow ETS table
+                wf_state=no_wf,  %% workflow state
+                queue=[]         %% queue of ready task Ids
                }).
 
 %%%===================================================================
@@ -400,9 +395,8 @@ run_task(#task_rec{id=Id, type=wfandj, pred=Pred}, State) ->
                 true -> %% we're done
                     handle_task_done(Id, 0, State);
                 false -> %% wait for all
-                    Task_states = maps:put(Id, waiting, State#state.task_state),
-                    State2 = State#state{task_state=Task_states},
-                    {ok, State2}
+                    wfnet_tasks:put_state(State#state.tabid, Id, waiting),
+                    {ok, State}
             end;
         Error = {error, _} ->
             {Error, State};
