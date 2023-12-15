@@ -37,7 +37,7 @@
 -type task() :: {task_type(), task_id(), task_succ(), task_data()}.
 %% task specific tuples types
 
--type task_state() :: inactive | done | waiting | running.
+-type task_state() :: inactive | done | waiting | running | skipped.
 %% task states
 
 -type wf_state() :: no_wf | loaded | aborted | running | completed.

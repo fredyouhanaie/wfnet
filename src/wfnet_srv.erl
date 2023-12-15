@@ -475,9 +475,9 @@ process_next(Id, State) ->
             Queue = State#state.queue,
             {ok, State#state{queue=Queue++Succ}};
 
-        #task_rec{id=Id, type=wfxors, pred=[Pred], data=Data} ->
+        #task_rec{id=Id, type=wfxors, pred=[Pred_id], succ=Succ, data=Data} ->
             %% check the result of the predecessor, and branch
-            Pred_result = wfnet_tasks:get_result(State#state.tabid, Pred),
+            Pred_result = wfnet_tasks:get_result(State#state.tabid, Pred_id),
             case Pred_result of
                 Error = {error, _} ->
                     {Error, State};
@@ -486,13 +486,9 @@ process_next(Id, State) ->
                         {badmap, _} ->
                             {{error, {wfxors_bad_data, Data}}, State};
                         true ->
-                            Next = map_get(K, Data),
-                            Queue = State#state.queue,
-                            {ok, State#state{queue=Queue++[Next]}};
+                            process_next_xors(map_get(K, Data), Succ, State);
                         false when is_map_key(default, Data) ->
-                            Next = map_get(default, Data),
-                            Queue = State#state.queue,
-                            {ok, State#state{queue=Queue++[Next]}};
+                            process_next_xors(map_get(default, Data), Succ, State);
                         false ->
                             {{error, {wfxors_bad_result, Pred_result}}, State}
                     end
@@ -501,6 +497,30 @@ process_next(Id, State) ->
         #task_rec{id=Id, type=wfxorj, succ=Succ} ->
             Queue = State#state.queue,
             {ok, State#state{queue=Queue++Succ}}
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc process the next task(s) of an XOR split (wfxors)
+%%
+%% The chosen successor, `Next', is added to the ready queue.
+%%
+%% The task state of the rest of the successors is changed to
+%% `skipped'.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec process_next_xors(task_id(), task_succ(), term()) -> {ok, term()}.
+process_next_xors(Next, Succ, State) ->
+    %% list of successors to skip
+    Skip = Succ--[Next],
+    Tab_id = State#state.tabid,
+    Put_ok = [ wfnet_tasks:put_state(Tab_id, T, skipped) || T <- Skip ],
+    case lists:all(fun (X) -> X==ok end, Put_ok) of
+        true ->
+            Queue = State#state.queue,
+            {ok, State#state{queue=Queue++[Next]}};
+        false ->
+            {{error, bad_update}, State}
     end.
 
 %%--------------------------------------------------------------------
