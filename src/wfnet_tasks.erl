@@ -109,6 +109,7 @@ get_task_elem(Tab_id, Id, Pos) ->
             try
                 {ok, ets:lookup_element(Tab_id, Id, Pos)}
             catch E ->
+                ?LOG_WARNING("exception from task record lookup (~p)", [E]),
                 {error, {bad_task_rec, Id}}
             end
     end.
@@ -135,7 +136,7 @@ put_task_elem(Tab_id, Id, {Pos, Val}) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc collect the requested elements of all the tasks.
+%% @doc collect the requested element of all the tasks.
 %%
 %% @end
 %%--------------------------------------------------------------------
