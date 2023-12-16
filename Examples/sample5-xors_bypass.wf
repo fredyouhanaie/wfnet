@@ -1,0 +1,11 @@
+%% -*- mode: erlang -*-
+
+%% test case for xors with bypass branch
+%% after aaa, bbb will either be executed or bypassed
+
+{wfenter, 0, 1,     {}}.
+{wftask,  1, 2,     {aaa}}.
+{wfxors,  2, [3,4], {}}.
+{wftask,  3, 4,     {bbb}}.
+{wfxorj,  4, 5,     {}}.
+{wfexit,  5, 5,     {}}.

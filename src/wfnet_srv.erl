@@ -475,23 +475,13 @@ process_next(Id, State) ->
             Queue = State#state.queue,
             {ok, State#state{queue=Queue++Succ}};
 
-        #task_rec{id=Id, type=wfxors, pred=[Pred_id], succ=Succ, data=Data} ->
+        #task_rec{id=Id, type=wfxors, pred=[Pred_id], data=Data} ->
             %% check the result of the predecessor, and branch
-            Pred_result = wfnet_tasks:get_result(State#state.tabid, Pred_id),
-            case Pred_result of
+            case wfnet_tasks:get_result(State#state.tabid, Pred_id) of
                 Error = {error, _} ->
                     {Error, State};
-                {ok, K} ->
-                    case catch is_map_key(K, Data) of
-                        {badmap, _} ->
-                            {{error, {wfxors_bad_data, Data}}, State};
-                        true ->
-                            process_next_xors(map_get(K, Data), Succ, State);
-                        false when is_map_key(default, Data) ->
-                            process_next_xors(map_get(default, Data), Succ, State);
-                        false ->
-                            {{error, {wfxors_bad_result, Pred_result}}, State}
-                    end
+                {ok, Pred_result} ->
+                    process_next_xors(Pred_result, Data, State)
             end;
 
         #task_rec{id=Id, type=wfxorj, succ=Succ} ->
@@ -504,23 +494,27 @@ process_next(Id, State) ->
 %%
 %% The chosen successor, `Next', is added to the ready queue.
 %%
-%% The task state of the rest of the successors is changed to
-%% `skipped'.
-%%
 %% @end
 %%--------------------------------------------------------------------
--spec process_next_xors(task_id(), task_succ(), term()) -> {ok, term()}.
-process_next_xors(Next, Succ, State) ->
-    %% list of successors to skip
-    Skip = Succ--[Next],
-    Tab_id = State#state.tabid,
-    Put_ok = [ wfnet_tasks:put_state(Tab_id, T, skipped) || T <- Skip ],
-    case lists:all(fun (X) -> X==ok end, Put_ok) of
-        true ->
+-spec process_next_xors(term(), map(), term()) ->
+          {ok | {error, term()}, term()}.
+process_next_xors(Pred_result, Data, State) ->
+    case catch map_get(Pred_result, Data) of
+        Next when is_integer(Next) ->
             Queue = State#state.queue,
             {ok, State#state{queue=Queue++[Next]}};
-        false ->
-            {{error, bad_update}, State}
+
+        {badkey, _} when is_map_key(default, Data) ->
+            Next = map_get(default, Data),
+            Queue = State#state.queue,
+            {ok, State#state{queue=Queue++[Next]}};
+
+        {badkey, _} ->
+            {{error, {wfxors_bad_result, Pred_result}}, State};
+
+        {badmap, _} ->
+            {{error, {wfxors_bad_data, Data}}, State}
+
     end.
 
 %%--------------------------------------------------------------------
