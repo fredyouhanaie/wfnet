@@ -334,85 +334,72 @@ get_task(Id, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec run_task(task_rec(), term()) -> {ok, term()} | {{error, term()}, term()}.
-run_task(#task_rec{id=Id, type=wfenter, pred=[]}, State) ->
-    case task_state(Id, State) of
-        inactive ->
-            handle_task_done(Id, 0, State);
-        Error = {error, _} ->
-            {Error, State};
-        S ->
-            {{error, {wfenter_bad_state, S}}, State}
-    end;
-
-run_task(#task_rec{id=Id, type=wftask, data=Data}, State) ->
-    case task_state(Id, State) of
-        inactive ->
-            wfnet_runner:run_task(Id, Data),
-            Res = wfnet_tasks:put_state(State#state.tabid, Id, running),
-            {Res, State};
-        done ->
-            {{error, wftask_already_done}, State};
-        running ->
-            {{error, wftask_already_running}, State};
-        Error = {error, _} ->
-            {Error, State};
-        S ->
-            {{error, {wftask_bad_state, S}}, State}
-    end;
-
-run_task(#task_rec{id=Id, type=wfexit, succ=[]}, State) ->
-    case task_state(Id, State) of
-        inactive ->
-            case State#state.queue of
-                [] ->
-                    handle_task_done(Id, 0, State);
-                Queue ->
-                    ?LOG_ERROR("wfexit with non-empty queue (~p).", [Queue]),
-                    {{error, wfexit_nonempty_queue}, State}
-            end;
-        Error = {error, _} ->
-            {Error, State};
-        S ->
-            {{error, {wfexit_bad_state, S}}, State}
-    end;
-
-run_task(#task_rec{id=Id, type=wfands}, State) ->
-    case task_state(Id, State) of
-        inactive ->
-            handle_task_done(Id, 0, State);
-        Error = {error, _} ->
-            {Error, State};
-        S ->
-            {{error, {wfands_bad_state, S}}, State}
-    end;
-
-run_task(#task_rec{id=Id, type=wfandj, pred=Pred}, State) ->
-    case task_state(Id, State) of
-        S when S==inactive orelse S==waiting ->
-            %% check the preds
-            All_done = lists:all(fun (X) -> task_is_done(X, State) end, Pred),
-            case All_done of
-                true -> %% we're done
-                    handle_task_done(Id, 0, State);
-                false -> %% wait for all
-                    wfnet_tasks:put_state(State#state.tabid, Id, waiting),
-                    {ok, State}
-            end;
-        Error = {error, _} ->
-            {Error, State};
-        S ->
-            {{error, {wfandj_bad_state, S}}, State}
-    end;
-
-run_task(#task_rec{id=Id, type=wfxorj}, State) ->
+run_task(#task_rec{id=Id, type=wfenter, state=inactive, pred=[]}, State) ->
     handle_task_done(Id, 0, State);
 
-run_task(#task_rec{id=Id, type=wfxors}, State) ->
+run_task(#task_rec{type=wfenter, state=S, pred=[]}, State) ->
+    {{error, {wfenter_bad_state, S}}, State};
+
+run_task(#task_rec{id=Id, type=wftask, state=inactive, data=Data}, State) ->
+    wfnet_runner:run_task(Id, Data),
+    {wfnet_tasks:put_state(State#state.tabid, Id, running), State};
+
+run_task(#task_rec{type=wftask, state=done}, State) ->
+    {{error, wftask_already_done}, State};
+
+run_task(#task_rec{type=wftask, state=running}, State) ->
+    {{error, wftask_already_running}, State};
+
+run_task(#task_rec{type=wftask, state=S}, State) ->
+    {{error, {wftask_bad_state, S}}, State};
+
+run_task(#task_rec{id=Id, type=wfexit, state=inactive, succ=[]}, State) ->
+    case State#state.queue of
+        [] ->
+            handle_task_done(Id, 0, State);
+        Queue ->
+            ?LOG_ERROR("wfexit with non-empty queue (~p).", [Queue]),
+            {{error, wfexit_nonempty_queue}, State}
+    end;
+
+run_task(#task_rec{type=wfexit, state=S, succ=[]}, State) ->
+    {{error, {wfexit_bad_state, S}}, State};
+
+run_task(#task_rec{id=Id, type=wfands, state=inactive}, State) ->
     handle_task_done(Id, 0, State);
+
+run_task(#task_rec{type=wfands, state=S}, State) ->
+    {{error, {wfands_bad_state, S}}, State};
+
+run_task(#task_rec{id=Id, type=wfandj, state=S, pred=Pred}, State)
+  when S==inactive orelse S==waiting ->
+    %% check the preds
+    All_done = lists:all(fun (X) -> task_is_done(X, State) end, Pred),
+    case All_done of
+        true -> %% we're done
+            handle_task_done(Id, 0, State);
+        false -> %% wait for all
+            wfnet_tasks:put_state(State#state.tabid, Id, waiting),
+            {ok, State}
+    end;
+
+run_task(#task_rec{type=wfandj, state=S}, State) ->
+    {{error, {wfandj_bad_state, S}}, State};
+
+run_task(#task_rec{id=Id, type=wfxorj, state=inactive}, State) ->
+    handle_task_done(Id, 0, State);
+
+run_task(#task_rec{type=wfxorj, state=S}, State) ->
+    {{error, {wfxorj_bad_state, S}}, State};
+
+run_task(#task_rec{id=Id, type=wfxors, state=inactive}, State) ->
+    handle_task_done(Id, 0, State);
+
+run_task(#task_rec{type=wfxors, state=S}, State) ->
+    {{error, {wfxors_bad_state, S}}, State};
 
 run_task(Task, State) ->
-    ?LOG_ERROR("Unknown task, task=~p, state=~p.", [Task, State]),
-    {ok, State}.
+    {{error, {bad_task, Task}}, State}.
 
 %%--------------------------------------------------------------------
 %% @doc update task state/result for a completed task
