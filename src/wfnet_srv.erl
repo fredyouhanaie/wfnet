@@ -384,11 +384,13 @@ run_task(#task_rec{id=Id, type=wfxorj, state=inactive}, State) ->
 run_task(#task_rec{id=Id, type=wfxors, state=inactive}, State) ->
     handle_task_done(Id, 0, State);
 
-run_task(#task_rec{id=Id, type=T, state=S, pred=[]}, State) ->
-    {{error, {bad_task_state, Id, T, S}}, State};
+run_task(#task_rec{id=Id, type=T, state=S}, State) ->
+    notify_emgr(wf_aborted),
+    {{error, {bad_task_state, Id, T, S}}, State#state{wf_state=aborted}};
 
 run_task(Task, State) ->
-    {{error, {bad_task, Task}}, State}.
+    notify_emgr(wf_aborted),
+    {{error, {bad_task, Task}}, State#state{wf_state=aborted}}.
 
 %%--------------------------------------------------------------------
 %% @doc update task state/result for a completed task
