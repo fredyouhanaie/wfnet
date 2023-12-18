@@ -77,7 +77,7 @@ run_wf() ->
 %%--------------------------------------------------------------------
 -spec task_done(integer(), term()) -> ok | {error, term()}.
 task_done(Id, Result) ->
-    gen_server:call(?SERVER, {task_done, Id, Result}).
+    gen_server:cast(?SERVER, {task_done, Id, Result}).
 
 %%--------------------------------------------------------------------
 %% @doc return the current server status.
@@ -156,8 +156,6 @@ handle_call({load_wf, _WF}, _From, State) ->
     Reply = {error, {wf_state, State#state.wf_state}},
     {reply, Reply, State};
 
-handle_call({task_done, Id, Result}, _From, State) ->
-    {Reply, State2} = handle_task_done(Id, Result, State),
 handle_call(run_wf, _From, State=#state{wf_state=loaded}) ->
     {Reply, State2} = check_reply(run_wf, handle_run_wf(State)),
     {reply, Reply, State2};
@@ -186,6 +184,16 @@ handle_call(Request, From, State) ->
           {noreply, NewState :: term(), Timeout :: timeout()} |
           {noreply, NewState :: term(), hibernate} |
           {stop, Reason :: term(), NewState :: term()}.
+
+handle_cast({task_done, Id, Result}, State=#state{wf_state=running}) ->
+    {_Reply, State2} = check_reply(task_done,
+                                   handle_task_done(Id, Result, State)),
+    {noreply, State2};
+
+handle_cast({task_done, _Id, _Result}, State) ->
+    Reply = {error, {wf_state, State#state.wf_state}},
+    {noreply, Reply, State};
+
 handle_cast(Request, State) ->
     ?LOG_WARNING("handle_cast: unexpected cast request: ~p.", [Request]),
     {noreply, State}.
