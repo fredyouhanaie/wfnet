@@ -139,17 +139,25 @@ init([]) ->
           {noreply, NewState :: term(), hibernate} |
           {stop, Reason :: term(), Reply :: term(), NewState :: term()} |
           {stop, Reason :: term(), NewState :: term()}.
-handle_call({load_file, Filename}, _From, State) ->
+
+handle_call({load_file, Filename}, _From, State=#state{wf_state=no_wf}) ->
     {Reply, State2} = handle_load_file(Filename, State),
     {reply, Reply, State2};
 
-handle_call({load_wf, WF}, _From, State) ->
+handle_call({load_file, _Filename}, _From, State) ->
+    Reply = {error, {wf_state, State#state.wf_state}},
+    {reply, Reply, State};
+
+handle_call({load_wf, WF}, _From, State=#state{wf_state=no_wf}) ->
     {Reply, State2} = handle_load_wf(WF, State),
     {reply, Reply, State2};
 
 handle_call(run_wf, _From, State) ->
     {Reply, State2} = handle_run_wf(State),
     {reply, Reply, State2};
+handle_call({load_wf, _WF}, _From, State) ->
+    Reply = {error, {wf_state, State#state.wf_state}},
+    {reply, Reply, State};
 
 handle_call({task_done, Id, Result}, _From, State) ->
     {Reply, State2} = handle_task_done(Id, Result, State),
@@ -245,17 +253,12 @@ format_status(_Opt, Status) ->
 %%--------------------------------------------------------------------
 -spec handle_load_file(file:name_all(), term()) ->
           {ok | {error, term()}, term()}.
-handle_load_file(Filename, State) ->
-    case State#state.wf_state of
-        no_wf ->
-            case wfnet_net:read_file(Filename) of
-                {ok, WF} ->
-                    handle_load_wf(WF, State);
-                Error ->
-                    {Error, State}
-            end;
-        _ ->
-            {{error, already_loaded}, State}
+handle_load_file(Filename, State=#state{wf_state=no_wf}) ->
+    case wfnet_net:read_file(Filename) of
+        {ok, WF} ->
+            handle_load_wf(WF, State);
+        Error ->
+            {Error, State}
     end.
 
 %%--------------------------------------------------------------------
@@ -265,18 +268,13 @@ handle_load_file(Filename, State) ->
 %%--------------------------------------------------------------------
 -spec handle_load_wf([task()], term()) ->
           {ok | {error, term()}, term()}.
-handle_load_wf(WF, State) ->
-    case State#state.wf_state of
-        no_wf ->
-            case wfnet_net:load_ets(WF) of
-                {ok, Tab_id} ->
-                    notify_emgr(wf_loaded),
-                    {ok, State#state{tabid=Tab_id, wf_state=loaded}};
-                Error ->
-                    {Error, State}
-            end;
-        _ ->
-            {{error, already_loaded}, State}
+handle_load_wf(WF, State=#state{wf_state=no_wf}) ->
+    case wfnet_net:load_ets(WF) of
+        {ok, Tab_id} ->
+            notify_emgr(wf_loaded),
+            {ok, State#state{tabid=Tab_id, wf_state=loaded}};
+        Error ->
+            {Error, State}
     end.
 
 %%--------------------------------------------------------------------
