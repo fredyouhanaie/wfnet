@@ -152,16 +152,19 @@ handle_call({load_wf, WF}, _From, State=#state{wf_state=no_wf}) ->
     {Reply, State2} = handle_load_wf(WF, State),
     {reply, Reply, State2};
 
-handle_call(run_wf, _From, State) ->
-    {Reply, State2} = handle_run_wf(State),
-    {reply, Reply, State2};
 handle_call({load_wf, _WF}, _From, State) ->
     Reply = {error, {wf_state, State#state.wf_state}},
     {reply, Reply, State};
 
 handle_call({task_done, Id, Result}, _From, State) ->
     {Reply, State2} = handle_task_done(Id, Result, State),
+handle_call(run_wf, _From, State=#state{wf_state=loaded}) ->
+    {Reply, State2} = check_reply(run_wf, handle_run_wf(State)),
     {reply, Reply, State2};
+
+handle_call(run_wf, _From, State) ->
+    Reply = {error, {wf_state, State#state.wf_state}},
+    {reply, Reply, State};
 
 handle_call(wf_info, _From, State) ->
     {Reply, State2} = handle_wf_info(State),
@@ -295,22 +298,7 @@ handle_run_wf(State=#state{wf_state=loaded}) ->
             notify_emgr(wf_running),
             State2 = State#state{wf_state=running},
             run_task(T, State2)
-    end;
-
-handle_run_wf(State=#state{wf_state=no_wf}) ->
-    {{error, wf_not_loaded}, State};
-
-handle_run_wf(State=#state{wf_state=running}) ->
-    {{error, wf_already_running}, State};
-
-handle_run_wf(State=#state{wf_state=completed}) ->
-    {{error, wf_already_completed}, State};
-
-handle_run_wf(State=#state{wf_state=aborted}) ->
-    {{error, wf_aborted}, State};
-
-handle_run_wf(State) ->
-    {{error, {wf_bad_state, State#state.wf_state}}, State}.
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc lookup a task
@@ -558,5 +546,23 @@ task_state(Id, State) ->
 -spec task_is_done(task_id(), term()) -> boolean().
 task_is_done(Id, State) ->
     task_state(Id, State) == done.
+
+%%--------------------------------------------------------------------
+%% @doc check and handle error replies from handlers
+%%
+%% Check the replies from the handles, e.g. `run_wf' and `task_done',
+%% and log the error, if any.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec check_reply(atom(), {term(), term()}) -> {term(), term()}.
+check_reply(Where, {Reply, State}) ->
+    case Reply of
+        {error, Error} ->
+            ?LOG_ERROR("~p: error ~p (~p).", [Where, Error, State]);
+        _ ->
+            ok
+    end,
+    {Reply, State}.
 
 %%--------------------------------------------------------------------
