@@ -331,6 +331,21 @@ get_task(Id, State) ->
 %%--------------------------------------------------------------------
 %% @doc initiate a task.
 %%
+%% The function is called for a given task when it is deemed ready to
+%% be run.
+%%
+%% For `wfenter', it is called from `handle_run_wf/0', for the rest,
+%% when one of its predecessors has completed, i.e. `task_done'.
+%%
+%% With the exception of `wfandj', the task should be in `inactive'
+%% state.
+%%
+%% For `wfandj' it may be `inactive' or `waiting'. A `wfandj' will be
+%% in `waiting' state after the first predecessor completes. It will
+%% complete when ALL the predecessors complete.
+%%
+%% A `wfxorj' only needs/expects one predecossor to complete.
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec run_task(task_rec(), term()) -> {ok, term()} | {{error, term()}, term()}.
