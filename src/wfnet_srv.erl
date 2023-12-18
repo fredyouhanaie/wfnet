@@ -337,21 +337,9 @@ get_task(Id, State) ->
 run_task(#task_rec{id=Id, type=wfenter, state=inactive, pred=[]}, State) ->
     handle_task_done(Id, 0, State);
 
-run_task(#task_rec{type=wfenter, state=S, pred=[]}, State) ->
-    {{error, {wfenter_bad_state, S}}, State};
-
 run_task(#task_rec{id=Id, type=wftask, state=inactive, data=Data}, State) ->
     wfnet_runner:run_task(Id, Data),
     {wfnet_tasks:put_state(State#state.tabid, Id, running), State};
-
-run_task(#task_rec{type=wftask, state=done}, State) ->
-    {{error, wftask_already_done}, State};
-
-run_task(#task_rec{type=wftask, state=running}, State) ->
-    {{error, wftask_already_running}, State};
-
-run_task(#task_rec{type=wftask, state=S}, State) ->
-    {{error, {wftask_bad_state, S}}, State};
 
 run_task(#task_rec{id=Id, type=wfexit, state=inactive, succ=[]}, State) ->
     case State#state.queue of
@@ -362,14 +350,8 @@ run_task(#task_rec{id=Id, type=wfexit, state=inactive, succ=[]}, State) ->
             {{error, wfexit_nonempty_queue}, State}
     end;
 
-run_task(#task_rec{type=wfexit, state=S, succ=[]}, State) ->
-    {{error, {wfexit_bad_state, S}}, State};
-
 run_task(#task_rec{id=Id, type=wfands, state=inactive}, State) ->
     handle_task_done(Id, 0, State);
-
-run_task(#task_rec{type=wfands, state=S}, State) ->
-    {{error, {wfands_bad_state, S}}, State};
 
 run_task(#task_rec{id=Id, type=wfandj, state=S, pred=Pred}, State)
   when S==inactive orelse S==waiting ->
@@ -383,20 +365,14 @@ run_task(#task_rec{id=Id, type=wfandj, state=S, pred=Pred}, State)
             {ok, State}
     end;
 
-run_task(#task_rec{type=wfandj, state=S}, State) ->
-    {{error, {wfandj_bad_state, S}}, State};
-
 run_task(#task_rec{id=Id, type=wfxorj, state=inactive}, State) ->
     handle_task_done(Id, 0, State);
-
-run_task(#task_rec{type=wfxorj, state=S}, State) ->
-    {{error, {wfxorj_bad_state, S}}, State};
 
 run_task(#task_rec{id=Id, type=wfxors, state=inactive}, State) ->
     handle_task_done(Id, 0, State);
 
-run_task(#task_rec{type=wfxors, state=S}, State) ->
-    {{error, {wfxors_bad_state, S}}, State};
+run_task(#task_rec{id=Id, type=T, state=S, pred=[]}, State) ->
+    {{error, {bad_task_state, Id, T, S}}, State};
 
 run_task(Task, State) ->
     {{error, {bad_task, Task}}, State}.
