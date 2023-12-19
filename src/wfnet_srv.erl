@@ -291,14 +291,14 @@ handle_load_wf(WF, State=#state{wf_state=no_wf}) ->
 %%--------------------------------------------------------------------
 %% @doc run the current workflow, if a workflow has been `loaded'.
 %%
-%% We expect `wfenter' to have id 0.
+%% Find the `wfenter' task and run it.
 %%
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_run_wf(term()) -> {ok | {error, term()}, term()}.
 handle_run_wf(State=#state{wf_state=loaded}) ->
-    case get_task(0, State) of
-        task_not_found ->
+    case get_task_wfenter(State#state.tabid) of
+        wfenter_not_found ->
             notify_emgr(wf_aborted),
             State2 = State#state{wf_state=aborted},
             {{error, wfenter_not_found}, State2};
@@ -308,8 +308,11 @@ handle_run_wf(State=#state{wf_state=loaded}) ->
             run_task(T, State2)
     end.
 
+%% this is to silence the "no local return" warning
+-dialyzer({nowarn_function, handle_run_wf/1}).
+
 %%--------------------------------------------------------------------
-%% @doc lookup a task
+%% @doc lookup a task by `Id'.
 %%
 %% @end
 %%--------------------------------------------------------------------
@@ -323,12 +326,31 @@ get_task(Id, State) ->
     end.
 
 %%--------------------------------------------------------------------
+%% @doc find and return the `wfenter' task record
+%%
+%% There should be exactly one `wfenter' record in the ETS table.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_task_wfenter(ets:table()) -> task_rec() | wfenter_not_found.
+get_task_wfenter(Tab_id) ->
+    case ets:match_object(Tab_id, #task_rec{type=wfenter, _='_'}) of
+        [Task] when is_record(Task, task_rec) ->
+            Task;
+        _ ->
+            wfenter_not_found
+    end.
+
+%% dialyzer doesn't like the record wildcard in the match pattern
+-dialyzer({nowarn_function, get_task_wfenter/1}).
+
+%%--------------------------------------------------------------------
 %% @doc initiate a task.
 %%
 %% The function is called for a given task when it is deemed ready to
 %% be run.
 %%
-%% For `wfenter', it is called from `handle_run_wf/0', for the rest,
+%% For `wfenter', it is called from `handle_run_wf/1', for the rest,
 %% when one of its predecessors has completed, i.e. `task_done'.
 %%
 %% With the exception of `wfandj', the task should be in `inactive'

@@ -72,7 +72,6 @@ check_wf(_WF) ->
 %% We check for:
 %%
 %% <ul>
-%% <li>`wfenter' must have id 0 (for now)</li>
 %% <li>`wfexit' must have identical `Id' and `Succ'</li>
 %% <li>`wfands' must have a list as `Succ'</li>
 %% <li>`wfxors' must have a list as `Succ'</li>
@@ -85,8 +84,6 @@ check_task(Task={Type, Id, Succ, _Data}) ->
     ?Check_task(lists:member(Type, ?Task_types), bad_task_type),
     ?Check_task(is_integer(Id), bad_task_id),
     case Type of
-        wfenter ->
-            ?Check_task(Id==0, bad_task_wfenter);
         wfexit ->
             ?Check_task(Id==Succ, bad_task_wfexit);
         wfands ->
