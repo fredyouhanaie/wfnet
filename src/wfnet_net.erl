@@ -10,7 +10,8 @@
 %%%-------------------------------------------------------------------
 -module(wfnet_net).
 
--export([read_file/1, load_ets/1, load_digraph/1, check_wf/1]).
+-export([read_file/1, load_ets/1, load_digraph/1]).
+-export([check_wf/1, check_digraph/1]).
 
 %%--------------------------------------------------------------------
 
@@ -96,6 +97,182 @@ check_task(Task={Type, Id, Succ, _Data}) ->
 
 check_task(Task) ->
     throw({error, {bad_task, Task}}).
+
+%%--------------------------------------------------------------------
+%% @doc Check/validate the graph of a workflow
+%%
+%% We check for the following:
+%%
+%% <ol>
+%%
+%% <li>There should be no leftover `placeholder' vertices.</li>
+%% <li>There should be exactly one `wfenter', and with no
+%% predecessors.</li>
+%% <li>There should be exactly one `wfexit', and with no
+%% successors.</li>
+%% <li>All other tasks must be on a path between `wfenter' and
+%% `wfexit'.</li>
+%%
+%% </ol>
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec check_digraph(digraph:graph()) -> ok | {error, term()}.
+check_digraph(G) ->
+    Vs = digraph:vertices(G),
+    catch check_vertices(Vs, G).
+
+%%--------------------------------------------------------------------
+%% @doc Check the vertices of a wfnet digraph.
+%%
+%% Ensure unique entry and exit, with a path between them. If OK,
+%% check the rest.
+%%
+%% In the interest of clarity, we `throw' an exception, if the checks
+%% fail. We expect the caller to use the `catch check_vertices(...)'
+%% pattern.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec check_vertices([task_id()]|[], digraph:graph()) ->
+          ok | {error, term()}.
+check_vertices(Vs, G) ->
+    V_id_type = fun ({Id, {Type, _}}) ->
+                        {Id, Type};
+                    ({_Id, placeholder}) ->
+                        throw({error, found_placeholder})
+                end,
+    V_types = [ V_id_type(digraph:vertex(G, V)) || V <- Vs ],
+    %%
+    %% look for and check wfenter(s)
+    Id_wfenter = case check_vertex_wfenter(V_types, G) of
+                     {ok, Id1} ->
+                         Id1;
+                     {error, E1} ->
+                         throw({error, E1})
+                 end,
+    %%
+    %% look for and check wfexit(s)
+    Id_wfexit = case check_vertex_wfexit(V_types, G) of
+                    {ok, Id2} ->
+                        Id2;
+                    {error, E2} ->
+                        throw({error, E2})
+                end,
+    %%
+    %% ensure path between entry and exit
+    case digraph:get_path(G, Id_wfenter, Id_wfexit) of
+        false ->
+            throw({error, wfenter_wfexit_no_path});
+        _ ->
+            ok
+    end,
+    %%
+    %% we have unique wfenter and wfexit, check the rest
+    check_vertices(V_types, G, Id_wfenter, Id_wfexit).
+
+%%--------------------------------------------------------------------
+%% @doc Check the rest of the vertices.
+%%
+%% We skip `wfenter' and `wfexit', and check for dangling middle
+%% tasks.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec check_vertices([{task_id(), task_type()}] | [],
+                     digraph:graph(), task_id(), task_id()) ->
+          ok | {error, term()}.
+check_vertices([], _G, _Id_wfenter, _Id_wfexit) ->
+    ok;
+
+check_vertices([{_Id, wfenter}|Vs], G, Id_wfenter, Id_wfexit) ->
+    check_vertices(Vs, G, Id_wfenter, Id_wfexit);
+
+check_vertices([{_Id, wfexit}|Vs], G, Id_wfenter, Id_wfexit) ->
+    check_vertices(Vs, G, Id_wfenter, Id_wfexit);
+
+check_vertices([{Id, _Type}|Vs], G, Id_wfenter, Id_wfexit) ->
+    case digraph:get_path(G, Id_wfenter, Id) of
+        false ->
+            {error, no_path_from_wfenter};
+        _ ->
+            case digraph:get_path(G, Id, Id_wfexit) of
+                false ->
+                    {error, no_path_to_wfexit};
+                _ ->
+                    check_vertices(Vs, G, Id_wfenter, Id_wfexit)
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc Check a `wfenter' vertex
+%%
+%% Check that there is exactly one `wfenter' vertex, and the vertex
+%% has no predecessors.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec check_vertex_wfenter([{task_id(), task_type()}], digraph:graph()) ->
+          {ok, task_id()} | {error, term()}.
+check_vertex_wfenter(V_types, G) ->
+    Ids = find_vertex_type(wfenter, V_types),
+    case Ids of
+        [Id] ->
+            case digraph:in_neighbours(G, Id) of
+                [] ->
+                    {ok, Id};
+                _ ->
+                    {error, {wfenter, not_first_task}}
+            end;
+        [] ->
+            {error, {wfenter, not_found}};
+        _ ->
+            {error, {wfenter, not_unique}}
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc Check a `wfexit' vertex
+%%
+%% Check that there is exactly one `wfexit' vertex, and the vertex has
+%% no successors.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec check_vertex_wfexit([{task_id(), task_type()}], digraph:graph()) ->
+          {ok, task_id()} | {error, term()}.
+check_vertex_wfexit(V_types, G) ->
+    Ids = find_vertex_type(wfexit, V_types),
+    case Ids of
+        [Id] ->
+            case digraph:out_neighbours(G, Id) of
+                [] ->
+                    {ok, Id};
+                _ ->
+                    {error, {wfexit, not_last_task}}
+            end;
+        [] ->
+            {error, {wfexit, not_found}};
+        _ ->
+            {error, {wfexit, not_unique}}
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc return all the `Id's of tasks of type `Type'.
+%%
+%% This function is expected to be called for counting `wfenter' and
+%% `wfexit' tasks.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec find_vertex_type(task_type(), [{task_id(), task_type()}]) ->
+                              [] | [task_id()].
+find_vertex_type(Type, V_id_types) ->
+    lists:filtermap(fun ({Id, T}) when T==Type ->
+                            {true, Id};
+                        (_) ->
+                            false
+                    end,
+                    V_id_types).
 
 %%--------------------------------------------------------------------
 %% @doc Load a workflow definition into an ETS table.

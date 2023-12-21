@@ -76,7 +76,7 @@ digraph_test_() ->
        {"empty workflow",
         fun() ->
                 {ok, DG} = wfnet_net:load_digraph([]),
-                ?_assertEqual([], digraph:vertices(DG))
+                ?assertEqual([], digraph:vertices(DG))
         end},
        {"bad workflow", ?_assertEqual({error, bad_net}, wfnet_net:load_digraph({})) },
        {"duplicate Id", ?_assertEqual({error, dup_task_id},
@@ -104,9 +104,39 @@ ets_test_() ->
                 ]
         end },
        {"empty workflow",
+        [ fun() ->
+                  {ok, Tab} = wfnet_net:load_ets([]),
+                  [?assertEqual([], ets:tab2list(Tab))]
+          end
+        ]}
+     ] }.
+
+%%--------------------------------------------------------------------
+
+check_dg_test_() ->
+    {"Check digraph tests",
+     [ {"empty workflow",
         fun() ->
-                {ok, Tab} = wfnet_net:load_ets([]),
-                ?_assertEqual([], ets:tab2list(Tab))
+                {ok, DG} = wfnet_net:load_digraph([]),
+                ?assertEqual({error, {wfenter, not_found}},
+                             wfnet_net:check_digraph(DG))
+        end},
+       {"placeholder",
+        fun() ->
+                {ok, DG} = wfnet_net:load_digraph([{wfenter,0,1,aaa}]),
+                ?assertEqual({error, found_placeholder},
+                             wfnet_net:check_digraph(DG))
+        end},
+       {"sample1",
+        fun() ->
+                {ok, WF} = wfnet_net:read_file(?Sample_1_file),
+                {ok, DG} = wfnet_net:load_digraph(WF),
+                ?assertEqual(ok, wfnet_net:check_digraph(DG))
+        end},
+       {"enter+exit only",
+        fun() ->
+                {ok, DG} = wfnet_net:load_digraph([{wfenter,0,1,{}},{wfexit,1,1,{}}]),
+                ?assertEqual(ok, wfnet_net:check_digraph(DG))
         end}
      ] }.
 
