@@ -33,6 +33,7 @@
 
 -define(Commands,
         [ {"graph", "Generate GraphViz DOT file"},
+          {"check", "Check/validat a workflow FILE"},
           {"info",  "Print information about workflow FILE"}
         ]).
 
@@ -121,6 +122,10 @@ do_command(graph, [File]) ->
     dg_to_dot(DG),
     ok;
 
+do_command(check, [File]) ->
+    check_file(File),
+    ok;
+
 do_command(Cmd, Args) ->
     io:format("cmd=~p, args=~p.~n", [Cmd, Args]),
     usage(),
@@ -177,5 +182,53 @@ print_edges(G, [E|Rest]) ->
     {E, Id1, Id2, _} = digraph:edge(G, E),
     io:format("    ~p -> ~p~n", [Id1, Id2]),
     print_edges(G, Rest).
+
+%%--------------------------------------------------------------------
+
+-spec check_file(file:name_all()) -> ok.
+check_file(File) ->
+    case wfnet_net:read_file(File) of
+        {ok, WF} ->
+            check_wf(WF);
+        Error ->
+            io:format("Could not read/parse the workflow fil, ~p.~n",
+                      [Error])
+    end,
+    ok.
+
+%%--------------------------------------------------------------------
+
+-spec check_wf([task_id]) -> ok.
+check_wf([]) ->
+    io:format("The workflow is empty!~n");
+
+check_wf(WF) ->
+    case wfnet_net:check_wf(WF) of
+        ok ->
+            io:format("The tasks of the workflow are OK.~n"),
+            check_graph(WF);
+        Error ->
+            io:format("There are problems with the workflow file, ~p.~n",
+                      [Error])
+    end,
+    ok.
+
+%%--------------------------------------------------------------------
+
+check_graph(WF) ->
+    case wfnet_net:load_digraph(WF) of
+        {ok, G} ->
+            case wfnet_net:check_digraph(G) of
+                ok ->
+                    io:format("The workflow graph is OK.~n");
+                Error ->
+                    io:format("The workflow graph has problems, ~p.~n",
+                              [Error])
+            end,
+            digraph:delete(G);
+        Error ->
+            io:format("Could not create digraph for the workflow, ~p.~n", [Error])
+    end,
+    ok.
 
 %%--------------------------------------------------------------------
