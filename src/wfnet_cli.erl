@@ -158,13 +158,13 @@ print_tasks(G, [Id|Rest]) ->
 %%--------------------------------------------------------------------
 
 -define(Node_fmt,
-        #{wfenter => "    ~p [shape=ellipse]~n",
-          wfexit  => "    ~p [shape=ellipse]~n",
-          wfands  => "    ~p [shape=box]~n",
-          wfandj  => "    ~p [shape=box]~n",
-          wfxors  => "    ~p [shape=diamond]~n",
-          wfxorj  => "    ~p [shape=diamond]~n",
-          wftask  => "    ~p [shape=circle]~n"
+        #{wfenter => "    ~p [shape=ellipse xlabel=enter]~n",
+          wfexit  => "    ~p [shape=ellipse xlabel=exit]~n",
+          wfands  => "    ~p [shape=box xlabel=and]~n",
+          wfandj  => "    ~p [shape=box xlabel=and]~n",
+          wfxors  => "    ~p [shape=diamond xlabel=xor]~n",
+          wfxorj  => "    ~p [shape=diamond xlabel=xor]~n",
+          wftask  => "    ~p [shape=circle xlabel=task]~n"
          }).
 
 -spec print_node({task_id(), term()}) -> ok.
