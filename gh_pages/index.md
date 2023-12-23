@@ -6,6 +6,8 @@ within an Erlang application.
 
 The code repository is at <https://github.com/fredyouhanaie/wfnet>.
 
+See the [project overview](overview.md) for further details.
+
 ---
 
 Follow these links for the module docs:
